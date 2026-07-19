@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="520" viewBox="0 0 1800 520">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="20.0" y="26.0" font-family="Arial, sans-serif" font-size="18" text-anchor="start" fill="#202124">SIGMOD year distribution</text>
+<line x1="70" y1="428" x2="1772" y2="428" stroke="#5f6368"/>
+<line x1="70" y1="44" x2="70" y2="428" stroke="#5f6368"/>
+<line x1="70" y1="428.0" x2="1772" y2="428.0" stroke="#f1f3f4"/>
+<text x="62.0" y="432.0" font-family="Arial, sans-serif" font-size="10" text-anchor="end" fill="#202124">0</text>
+<line x1="70" y1="332.0" x2="1772" y2="332.0" stroke="#f1f3f4"/>
+<text x="62.0" y="336.0" font-family="Arial, sans-serif" font-size="10" text-anchor="end" fill="#202124">67</text>
+<line x1="70" y1="236.0" x2="1772" y2="236.0" stroke="#f1f3f4"/>
+<text x="62.0" y="240.0" font-family="Arial, sans-serif" font-size="10" text-anchor="end" fill="#202124">135</text>
+<line x1="70" y1="140.0" x2="1772" y2="140.0" stroke="#f1f3f4"/>
+<text x="62.0" y="144.0" font-family="Arial, sans-serif" font-size="10" text-anchor="end" fill="#202124">202</text>
+<line x1="70" y1="44.0" x2="1772" y2="44.0" stroke="#f1f3f4"/>
+<text x="62.0" y="48.0" font-family="Arial, sans-serif" font-size="10" text-anchor="end" fill="#202124">270</text>
+<rect x="70.0" y="391.0" width="33.5" height="37.0" fill="#188038"/>
+<text x="86.8" y="446" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#202124" transform="rotate(45 86.8 446)">1975</text>
+<rect x="105.5" y="398.1" width="33.5" height="29.9" fill="#188038"/>
+<rect x="141.0" y="398.1" width="33.5" height="29.9" fill="#188038"/>
+<rect x="176.5" y="389.6" width="33.5" height="38.4" fill="#188038"/>
+<rect x="212.0" y="393.9" width="33.5" height="34.1" fill="#188038"/>
+<rect x="247.5" y="395.3" width="33.5" height="32.7" fill="#188038"/>
+<text x="264.2" y="446" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#202124" transform="rotate(45 264.2 446)">1980</text>
+<rect x="283.0" y="392.4" width="33.5" height="35.6" fill="#188038"/>
+<rect x="318.5" y="375.4" width="33.5" height="52.6" fill="#188038"/>
+<rect x="354.0" y="386.8" width="33.5" height="41.2" fill="#188038"/>
+<rect x="389.5" y="383.9" width="33.5" height="44.1" fill="#188038"/>
+<rect x="425.0" y="371.1" width="33.5" height="56.9" fill="#188038"/>
+<text x="441.8" y="446" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#202124" transform="rotate(45 441.8 446)">1985</text>
+<rect x="460.5" y="375.4" width="33.5" height="52.6" fill="#188038"/>
+<rect x="496.0" y="356.9" width="33.5" height="71.1" fill="#188038"/>
+<rect x="531.5" y="339.8" width="33.5" height="88.2" fill="#188038"/>
+<rect x="567.0" y="361.2" width="33.5" height="66.8" fill="#188038"/>
+<rect x="602.5" y="359.7" width="33.5" height="68.3" fill="#188038"/>
+<text x="619.2" y="446" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#202124" transform="rotate(45 619.2 446)">1990</text>
+<rect x="638.0" y="359.7" width="33.5" height="68.3" fill="#188038"/>
+<rect x="673.5" y="335.6" width="33.5" height="92.4" fill="#188038"/>
+<rect x="709.0" y="301.4" width="33.5" height="126.6" fill="#188038"/>
+<rect x="744.5" y="322.8" width="33.5" height="105.2" fill="#188038"/>
+<rect x="780.0" y="307.1" width="33.5" height="120.9" fill="#188038"/>
+<text x="796.8" y="446" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#202124" transform="rotate(45 796.8 446)">1995</text>
+<rect x="815.5" y="337.0" width="33.5" height="91.0" fill="#188038"/>
+<rect x="851.0" y="332.7" width="33.5" height="95.3" fill="#188038"/>
+<rect x="886.5" y="305.7" width="33.5" height="122.3" fill="#188038"/>
+<rect x="922.0" y="307.1" width="33.5" height="120.9" fill="#188038"/>
+<rect x="957.5" y="312.8" width="33.5" height="115.2" fill="#188038"/>
+<text x="974.2" y="446" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#202124" transform="rotate(45 974.2 446)">2000</text>
+<rect x="993.0" y="308.5" width="33.5" height="119.5" fill="#188038"/>
+<rect x="1028.5" y="311.4" width="33.5" height="116.6" fill="#188038"/>
+<rect x="1064.0" y="292.9" width="33.5" height="135.1" fill="#188038"/>
+<rect x="1099.5" y="260.2" width="33.5" height="167.8" fill="#188038"/>
+<rect x="1135.0" y="263.0" width="33.5" height="165.0" fill="#188038"/>
+<text x="1151.8" y="446" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#202124" transform="rotate(45 1151.8 446)">2005</text>
+<rect x="1170.5" y="287.2" width="33.5" height="140.8" fill="#188038"/>
+<rect x="1206.0" y="233.2" width="33.5" height="194.8" fill="#188038"/>
+<rect x="1241.5" y="240.3" width="33.5" height="187.7" fill="#188038"/>
+<rect x="1277.0" y="251.6" width="33.5" height="176.4" fill="#188038"/>
+<rect x="1312.5" y="230.3" width="33.5" height="197.7" fill="#188038"/>
+<text x="1329.2" y="446" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#202124" transform="rotate(45 1329.2 446)">2010</text>
+<rect x="1348.0" y="227.5" width="33.5" height="200.5" fill="#188038"/>
+<rect x="1383.5" y="268.7" width="33.5" height="159.3" fill="#188038"/>
+<rect x="1419.0" y="214.7" width="33.5" height="213.3" fill="#188038"/>
+<rect x="1454.5" y="191.9" width="33.5" height="236.1" fill="#188038"/>
+<rect x="1490.0" y="189.1" width="33.5" height="238.9" fill="#188038"/>
+<text x="1506.8" y="446" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#202124" transform="rotate(45 1506.8 446)">2015</text>
+<rect x="1525.5" y="157.8" width="33.5" height="270.2" fill="#188038"/>
+<rect x="1561.0" y="216.1" width="33.5" height="211.9" fill="#188038"/>
+<rect x="1596.5" y="199.0" width="33.5" height="229.0" fill="#188038"/>
+<rect x="1632.0" y="173.4" width="33.5" height="254.6" fill="#188038"/>
+<rect x="1667.5" y="95.2" width="33.5" height="332.8" fill="#188038"/>
+<text x="1684.2" y="446" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#202124" transform="rotate(45 1684.2 446)">2020</text>
+<rect x="1703.0" y="44.0" width="33.5" height="384.0" fill="#188038"/>
+<rect x="1738.5" y="112.3" width="33.5" height="315.7" fill="#188038"/>
+<text x="1755.2" y="446" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#202124" transform="rotate(45 1755.2 446)">2022</text>
+</svg>

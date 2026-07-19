@@ -1,0 +1,45 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Large DBLP dump files
+data/dblp/dump/*.xml
+!data/dblp/dump/.gitkeep
+
+# Generated data
+data/dblp/split_source/
+tmp/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# macOS
+.DS_Store
+._*
+
+# Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log

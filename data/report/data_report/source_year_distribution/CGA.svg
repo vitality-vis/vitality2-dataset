@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1634" height="520" viewBox="0 0 1634 520">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="20.0" y="26.0" font-family="Arial, sans-serif" font-size="18" text-anchor="start" fill="#202124">CGA year distribution</text>
+<line x1="70" y1="428" x2="1606" y2="428" stroke="#5f6368"/>
+<line x1="70" y1="44" x2="70" y2="428" stroke="#5f6368"/>
+<line x1="70" y1="428.0" x2="1606" y2="428.0" stroke="#f1f3f4"/>
+<text x="62.0" y="432.0" font-family="Arial, sans-serif" font-size="10" text-anchor="end" fill="#202124">0</text>
+<line x1="70" y1="332.0" x2="1606" y2="332.0" stroke="#f1f3f4"/>
+<text x="62.0" y="336.0" font-family="Arial, sans-serif" font-size="10" text-anchor="end" fill="#202124">23</text>
+<line x1="70" y1="236.0" x2="1606" y2="236.0" stroke="#f1f3f4"/>
+<text x="62.0" y="240.0" font-family="Arial, sans-serif" font-size="10" text-anchor="end" fill="#202124">46</text>
+<line x1="70" y1="140.0" x2="1606" y2="140.0" stroke="#f1f3f4"/>
+<text x="62.0" y="144.0" font-family="Arial, sans-serif" font-size="10" text-anchor="end" fill="#202124">69</text>
+<line x1="70" y1="44.0" x2="1606" y2="44.0" stroke="#f1f3f4"/>
+<text x="62.0" y="48.0" font-family="Arial, sans-serif" font-size="10" text-anchor="end" fill="#202124">93</text>
+<rect x="70.0" y="93.5" width="33.8" height="334.5" fill="#188038"/>
+<text x="86.9" y="446" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#202124" transform="rotate(45 86.9 446)">1984</text>
+<rect x="105.8" y="196.8" width="33.8" height="231.2" fill="#188038"/>
+<rect x="141.5" y="101.8" width="33.8" height="326.2" fill="#188038"/>
+<rect x="177.3" y="114.2" width="33.8" height="313.8" fill="#188038"/>
+<rect x="213.1" y="275.2" width="33.8" height="152.8" fill="#188038"/>
+<rect x="248.8" y="229.8" width="33.8" height="198.2" fill="#188038"/>
+<text x="265.7" y="446" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#202124" transform="rotate(45 265.7 446)">1989</text>
+<rect x="284.6" y="233.9" width="33.8" height="194.1" fill="#188038"/>
+<rect x="320.4" y="196.8" width="33.8" height="231.2" fill="#188038"/>
+<rect x="356.1" y="242.2" width="33.8" height="185.8" fill="#188038"/>
+<rect x="391.9" y="196.8" width="33.8" height="231.2" fill="#188038"/>
+<rect x="427.7" y="147.2" width="33.8" height="280.8" fill="#188038"/>
+<text x="444.6" y="446" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#202124" transform="rotate(45 444.6 446)">1994</text>
+<rect x="463.4" y="139.0" width="33.8" height="289.0" fill="#188038"/>
+<rect x="499.2" y="89.4" width="33.8" height="338.6" fill="#188038"/>
+<rect x="535.0" y="93.5" width="33.8" height="334.5" fill="#188038"/>
+<rect x="570.7" y="77.0" width="33.8" height="351.0" fill="#188038"/>
+<rect x="606.5" y="81.2" width="33.8" height="346.8" fill="#188038"/>
+<text x="623.4" y="446" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#202124" transform="rotate(45 623.4 446)">1999</text>
+<rect x="642.3" y="56.4" width="33.8" height="371.6" fill="#188038"/>
+<rect x="678.0" y="114.2" width="33.8" height="313.8" fill="#188038"/>
+<rect x="713.8" y="85.3" width="33.8" height="342.7" fill="#188038"/>
+<rect x="749.6" y="85.3" width="33.8" height="342.7" fill="#188038"/>
+<rect x="785.3" y="60.5" width="33.8" height="367.5" fill="#188038"/>
+<text x="802.2" y="446" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#202124" transform="rotate(45 802.2 446)">2004</text>
+<rect x="821.1" y="48.1" width="33.8" height="379.9" fill="#188038"/>
+<rect x="856.9" y="114.2" width="33.8" height="313.8" fill="#188038"/>
+<rect x="892.7" y="101.8" width="33.8" height="326.2" fill="#188038"/>
+<rect x="928.4" y="114.2" width="33.8" height="313.8" fill="#188038"/>
+<rect x="964.2" y="139.0" width="33.8" height="289.0" fill="#188038"/>
+<text x="981.1" y="446" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#202124" transform="rotate(45 981.1 446)">2009</text>
+<rect x="1000.0" y="130.7" width="33.8" height="297.3" fill="#188038"/>
+<rect x="1035.7" y="130.7" width="33.8" height="297.3" fill="#188038"/>
+<rect x="1071.5" y="93.5" width="33.8" height="334.5" fill="#188038"/>
+<rect x="1107.3" y="126.6" width="33.8" height="301.4" fill="#188038"/>
+<rect x="1143.0" y="126.6" width="33.8" height="301.4" fill="#188038"/>
+<text x="1159.9" y="446" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#202124" transform="rotate(45 1159.9 446)">2014</text>
+<rect x="1178.8" y="97.7" width="33.8" height="330.3" fill="#188038"/>
+<rect x="1214.6" y="151.4" width="33.8" height="276.6" fill="#188038"/>
+<rect x="1250.3" y="101.8" width="33.8" height="326.2" fill="#188038"/>
+<rect x="1286.1" y="114.2" width="33.8" height="313.8" fill="#188038"/>
+<rect x="1321.9" y="172.0" width="33.8" height="256.0" fill="#188038"/>
+<text x="1338.7" y="446" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#202124" transform="rotate(45 1338.7 446)">2019</text>
+<rect x="1357.6" y="134.8" width="33.8" height="293.2" fill="#188038"/>
+<rect x="1393.4" y="44.0" width="33.8" height="384.0" fill="#188038"/>
+<rect x="1429.2" y="114.2" width="33.8" height="313.8" fill="#188038"/>
+<rect x="1464.9" y="97.7" width="33.8" height="330.3" fill="#188038"/>
+<rect x="1500.7" y="68.8" width="33.8" height="359.2" fill="#188038"/>
+<text x="1517.6" y="446" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#202124" transform="rotate(45 1517.6 446)">2024</text>
+<rect x="1536.5" y="60.5" width="33.8" height="367.5" fill="#188038"/>
+<rect x="1572.2" y="242.2" width="33.8" height="185.8" fill="#188038"/>
+<text x="1589.1" y="446" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#202124" transform="rotate(45 1589.1 446)">2026</text>
+</svg>

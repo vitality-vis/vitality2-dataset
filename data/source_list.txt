@@ -1,0 +1,40 @@
+| abrv | full |
+|------|------|
+| CHI | ACM Conference on Human Factors in Computing Systems |
+| TVCG | IEEE Transactions on Visualization and Computer Graphics |
+| VIS | IEEE Visualization Conference (IEEE VIS) |
+| EuroVis | Eurographics Conference on Visualization |
+| PacificVis | IEEE Pacific Visualization Symposium |
+| IUI | ACM International Conference on Intelligent User Interfaces |
+| AVI | International Conference on Advanced Visual Interfaces |
+| SIGGRAPH | ACM SIGGRAPH Conference on Computer Graphics and Interactive Techniques |
+| CGF | Computer Graphics Forum |
+| CSCW | ACM Conference on Computer-Supported Cooperative Work and Social Computing |
+| DIS | ACM Designing Interactive Systems Conference |
+| CGA | IEEE Computer Graphics and Applications |
+| UIST | ACM Symposium on User Interface Software and Technology |
+| VAST | IEEE Conference on Visual Analytics Science and Technology |
+| BELIV | Workshop on BEyond time and errors: novel evaLuation methods for Information Visualization |
+| BioVis | IEEE Symposium on Biological Data Visualization |
+| IVAPP | International Conference on Information Visualization Theory and Applications |
+| ICDM | IEEE International Conference on Data Mining |
+| Information Vis. | Information Visualization (SAGE Journal) |
+| SIBGRAPI | Conference on Graphics, Patterns and Images (SIBGRAPI Conference on Graphics, Patterns and Images) |
+| UbiComp | ACM International Joint Conference on Pervasive and Ubiquitous Computing |
+| Supercomputing | ACM/IEEE International Conference for High Performance Computing, Networking, Storage and Analysis (SC) |
+| Graphics Interface | Graphics Interface Conference |
+| SIGGRAPH Asia | ACM SIGGRAPH Asia Conference |
+| Diagrams | International Conference on the Theory and Application of Diagrams |
+| Interact | IFIP TC13 International Conference on Human–Computer Interaction (INTERACT) |
+| Pacific Graphics | Pacific Conference on Computer Graphics and Applications |
+| VCBM | Eurographics Workshop on Visual Computing for Biology and Medicine |
+| KDD | ACM SIGKDD Conference on Knowledge Discovery and Data Mining |
+| The Visual Computer | The Visual Computer (Springer Journal) |
+| VMV | Vision, Modeling and Visualization Conference |
+| Intelligent Vehicles | IEEE Intelligent Vehicles Symposium (IV) |
+| Journal of Vis. | Journal of Visualization |
+| SIGMOD | ACM SIGMOD International Conference on Management of Data |
+| BCS HCI | BCS Conference on Human-Computer Interaction |
+| Cognitive Biases in Vis. | Workshop on Cognitive Biases in Visualization |
+| TOCHI | ACM Transactions on Computer-Human Interaction |
+| Cognitive Science | Cognitive Science (Journal) |
