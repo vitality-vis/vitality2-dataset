@@ -10,6 +10,7 @@ data/dblp/dump/*.xml
 # Generated data
 data/dblp/split_source/
 data/papers/*
+!data/papers/.gitkeep
 tmp/
 
 # Python
