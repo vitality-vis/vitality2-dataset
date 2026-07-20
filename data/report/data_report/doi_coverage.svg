@@ -1,0 +1,184 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="990" viewBox="0 0 1200 990">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="20.0" y="24.0" font-family="Arial, sans-serif" font-size="18" text-anchor="start" fill="#202124">DOI coverage by source</text>
+<text x="230.0" y="42.0" font-family="Arial, sans-serif" font-size="11" text-anchor="middle" fill="#202124">0%</text>
+<text x="625.0" y="42.0" font-family="Arial, sans-serif" font-size="11" text-anchor="middle" fill="#202124">50%</text>
+<text x="1020.0" y="42.0" font-family="Arial, sans-serif" font-size="11" text-anchor="middle" fill="#202124">100%</text>
+<text x="12.0" y="57.0" font-family="Arial, sans-serif" font-size="12" text-anchor="start" fill="#202124">UIST</text>
+<rect x="230" y="44" width="790" height="14" fill="#e8eaed"/>
+<rect x="230" y="44" width="790.0" height="14" fill="#1a73e8"/>
+<text x="1032.0" y="56.0" font-family="Arial, sans-serif" font-size="11" text-anchor="start" fill="#202124">100.0% DOI (3,323/3,323)</text>
+<text x="12.0" y="81.0" font-family="Arial, sans-serif" font-size="12" text-anchor="start" fill="#202124">CSCW</text>
+<rect x="230" y="68" width="790" height="14" fill="#e8eaed"/>
+<rect x="230" y="68" width="790.0" height="14" fill="#1a73e8"/>
+<text x="1032.0" y="80.0" font-family="Arial, sans-serif" font-size="11" text-anchor="start" fill="#202124">100.0% DOI (3,130/3,130)</text>
+<text x="12.0" y="105.0" font-family="Arial, sans-serif" font-size="12" text-anchor="start" fill="#202124">Journal of Vis.</text>
+<rect x="230" y="92" width="790" height="14" fill="#e8eaed"/>
+<rect x="230" y="92" width="790.0" height="14" fill="#1a73e8"/>
+<text x="1032.0" y="104.0" font-family="Arial, sans-serif" font-size="11" text-anchor="start" fill="#202124">100.0% DOI (1,606/1,606)</text>
+<text x="12.0" y="129.0" font-family="Arial, sans-serif" font-size="12" text-anchor="start" fill="#202124">UbiComp</text>
+<rect x="230" y="116" width="790" height="14" fill="#e8eaed"/>
+<rect x="230" y="116" width="790.0" height="14" fill="#1a73e8"/>
+<text x="1032.0" y="128.0" font-family="Arial, sans-serif" font-size="11" text-anchor="start" fill="#202124">100.0% DOI (1,191/1,191)</text>
+<text x="12.0" y="153.0" font-family="Arial, sans-serif" font-size="12" text-anchor="start" fill="#202124">VAST</text>
+<rect x="230" y="140" width="790" height="14" fill="#e8eaed"/>
+<rect x="230" y="140" width="790.0" height="14" fill="#1a73e8"/>
+<text x="1032.0" y="152.0" font-family="Arial, sans-serif" font-size="11" text-anchor="start" fill="#202124">100.0% DOI (970/970)</text>
+<text x="12.0" y="177.0" font-family="Arial, sans-serif" font-size="12" text-anchor="start" fill="#202124">PacificVis</text>
+<rect x="230" y="164" width="790" height="14" fill="#e8eaed"/>
+<rect x="230" y="164" width="790.0" height="14" fill="#1a73e8"/>
+<text x="1032.0" y="176.0" font-family="Arial, sans-serif" font-size="11" text-anchor="start" fill="#202124">100.0% DOI (679/679)</text>
+<text x="12.0" y="201.0" font-family="Arial, sans-serif" font-size="12" text-anchor="start" fill="#202124">Diagrams</text>
+<rect x="230" y="188" width="790" height="14" fill="#e8eaed"/>
+<rect x="230" y="188" width="790.0" height="14" fill="#1a73e8"/>
+<text x="1032.0" y="200.0" font-family="Arial, sans-serif" font-size="11" text-anchor="start" fill="#202124">100.0% DOI (670/670)</text>
+<text x="12.0" y="225.0" font-family="Arial, sans-serif" font-size="12" text-anchor="start" fill="#202124">Information Vis.</text>
+<rect x="230" y="212" width="790" height="14" fill="#e8eaed"/>
+<rect x="230" y="212" width="790.0" height="14" fill="#1a73e8"/>
+<text x="1032.0" y="224.0" font-family="Arial, sans-serif" font-size="11" text-anchor="start" fill="#202124">100.0% DOI (554/554)</text>
+<text x="12.0" y="249.0" font-family="Arial, sans-serif" font-size="12" text-anchor="start" fill="#202124">SIGGRAPH Asia</text>
+<rect x="230" y="236" width="790" height="14" fill="#e8eaed"/>
+<rect x="230" y="236" width="790.0" height="14" fill="#1a73e8"/>
+<text x="1032.0" y="248.0" font-family="Arial, sans-serif" font-size="11" text-anchor="start" fill="#202124">100.0% DOI (538/538)</text>
+<text x="12.0" y="273.0" font-family="Arial, sans-serif" font-size="12" text-anchor="start" fill="#202124">EuroVis</text>
+<rect x="230" y="260" width="790" height="14" fill="#e8eaed"/>
+<rect x="230" y="260" width="790.0" height="14" fill="#1a73e8"/>
+<text x="1032.0" y="272.0" font-family="Arial, sans-serif" font-size="11" text-anchor="start" fill="#202124">100.0% DOI (438/438)</text>
+<text x="12.0" y="297.0" font-family="Arial, sans-serif" font-size="12" text-anchor="start" fill="#202124">VCBM</text>
+<rect x="230" y="284" width="790" height="14" fill="#e8eaed"/>
+<rect x="230" y="284" width="790.0" height="14" fill="#1a73e8"/>
+<text x="1032.0" y="296.0" font-family="Arial, sans-serif" font-size="11" text-anchor="start" fill="#202124">100.0% DOI (232/232)</text>
+<text x="12.0" y="321.0" font-family="Arial, sans-serif" font-size="12" text-anchor="start" fill="#202124">BELIV</text>
+<rect x="230" y="308" width="790" height="14" fill="#e8eaed"/>
+<rect x="230" y="308" width="790.0" height="14" fill="#1a73e8"/>
+<text x="1032.0" y="320.0" font-family="Arial, sans-serif" font-size="11" text-anchor="start" fill="#202124">100.0% DOI (145/145)</text>
+<text x="12.0" y="345.0" font-family="Arial, sans-serif" font-size="12" text-anchor="start" fill="#202124">BioVis</text>
+<rect x="230" y="332" width="790" height="14" fill="#e8eaed"/>
+<rect x="230" y="332" width="790.0" height="14" fill="#1a73e8"/>
+<text x="1032.0" y="344.0" font-family="Arial, sans-serif" font-size="11" text-anchor="start" fill="#202124">100.0% DOI (54/54)</text>
+<text x="12.0" y="369.0" font-family="Arial, sans-serif" font-size="12" text-anchor="start" fill="#202124">SciVis</text>
+<rect x="230" y="356" width="790" height="14" fill="#e8eaed"/>
+<rect x="230" y="356" width="790.0" height="14" fill="#1a73e8"/>
+<text x="1032.0" y="368.0" font-family="Arial, sans-serif" font-size="11" text-anchor="start" fill="#202124">100.0% DOI (53/53)</text>
+<text x="12.0" y="393.0" font-family="Arial, sans-serif" font-size="12" text-anchor="start" fill="#202124">CHI</text>
+<rect x="230" y="380" width="790" height="14" fill="#e8eaed"/>
+<rect x="230" y="380" width="789.9" height="14" fill="#1a73e8"/>
+<rect x="1019.9" y="380" width="0.1" height="14" fill="#fbbc04"/>
+<text x="1032.0" y="392.0" font-family="Arial, sans-serif" font-size="11" text-anchor="start" fill="#202124">100.0% DOI (28,092/28,094)</text>
+<text x="12.0" y="417.0" font-family="Arial, sans-serif" font-size="12" text-anchor="start" fill="#202124">DIS</text>
+<rect x="230" y="404" width="790" height="14" fill="#e8eaed"/>
+<rect x="230" y="404" width="789.8" height="14" fill="#1a73e8"/>
+<rect x="1019.8" y="404" width="0.2" height="14" fill="#fbbc04"/>
+<text x="1032.0" y="416.0" font-family="Arial, sans-serif" font-size="11" text-anchor="start" fill="#202124">100.0% DOI (3,308/3,309)</text>
+<text x="12.0" y="441.0" font-family="Arial, sans-serif" font-size="12" text-anchor="start" fill="#202124">The Visual Computer</text>
+<rect x="230" y="428" width="790" height="14" fill="#e8eaed"/>
+<rect x="230" y="428" width="789.4" height="14" fill="#1a73e8"/>
+<rect x="1019.4" y="428" width="0.6" height="14" fill="#fbbc04"/>
+<text x="1032.0" y="440.0" font-family="Arial, sans-serif" font-size="11" text-anchor="start" fill="#202124">99.9% DOI (5,370/5,374)</text>
+<text x="12.0" y="465.0" font-family="Arial, sans-serif" font-size="12" text-anchor="start" fill="#202124">Cognitive Science</text>
+<rect x="230" y="452" width="790" height="14" fill="#e8eaed"/>
+<rect x="230" y="452" width="788.7" height="14" fill="#1a73e8"/>
+<rect x="1018.7" y="452" width="1.3" height="14" fill="#fbbc04"/>
+<text x="1032.0" y="464.0" font-family="Arial, sans-serif" font-size="11" text-anchor="start" fill="#202124">99.8% DOI (2,350/2,354)</text>
+<text x="12.0" y="489.0" font-family="Arial, sans-serif" font-size="12" text-anchor="start" fill="#202124">IV</text>
+<rect x="230" y="476" width="790" height="14" fill="#e8eaed"/>
+<rect x="230" y="476" width="788.4" height="14" fill="#1a73e8"/>
+<rect x="1018.4" y="476" width="1.6" height="14" fill="#fbbc04"/>
+<text x="1032.0" y="488.0" font-family="Arial, sans-serif" font-size="11" text-anchor="start" fill="#202124">99.8% DOI (4,981/4,991)</text>
+<text x="12.0" y="513.0" font-family="Arial, sans-serif" font-size="12" text-anchor="start" fill="#202124">TVCG</text>
+<rect x="230" y="500" width="790" height="14" fill="#e8eaed"/>
+<rect x="230" y="500" width="788.0" height="14" fill="#1a73e8"/>
+<rect x="1018.0" y="500" width="2.0" height="14" fill="#fbbc04"/>
+<text x="1032.0" y="512.0" font-family="Arial, sans-serif" font-size="11" text-anchor="start" fill="#202124">99.7% DOI (7,115/7,133)</text>
+<text x="12.0" y="537.0" font-family="Arial, sans-serif" font-size="12" text-anchor="start" fill="#202124">CGF</text>
+<rect x="230" y="524" width="790" height="14" fill="#e8eaed"/>
+<rect x="230" y="524" width="787.1" height="14" fill="#1a73e8"/>
+<rect x="1017.1" y="524" width="2.9" height="14" fill="#fbbc04"/>
+<text x="1032.0" y="536.0" font-family="Arial, sans-serif" font-size="11" text-anchor="start" fill="#202124">99.6% DOI (5,932/5,954)</text>
+<text x="12.0" y="561.0" font-family="Arial, sans-serif" font-size="12" text-anchor="start" fill="#202124">IUI</text>
+<rect x="230" y="548" width="790" height="14" fill="#e8eaed"/>
+<rect x="230" y="548" width="785.7" height="14" fill="#1a73e8"/>
+<rect x="1015.7" y="548" width="4.3" height="14" fill="#fbbc04"/>
+<text x="1032.0" y="560.0" font-family="Arial, sans-serif" font-size="11" text-anchor="start" fill="#202124">99.5% DOI (2,743/2,758)</text>
+<text x="12.0" y="585.0" font-family="Arial, sans-serif" font-size="12" text-anchor="start" fill="#202124">TOCHI</text>
+<rect x="230" y="572" width="790" height="14" fill="#e8eaed"/>
+<rect x="230" y="572" width="783.8" height="14" fill="#1a73e8"/>
+<rect x="1013.8" y="572" width="6.2" height="14" fill="#fbbc04"/>
+<text x="1032.0" y="584.0" font-family="Arial, sans-serif" font-size="11" text-anchor="start" fill="#202124">99.2% DOI (1,005/1,013)</text>
+<text x="12.0" y="609.0" font-family="Arial, sans-serif" font-size="12" text-anchor="start" fill="#202124">ICDM</text>
+<rect x="230" y="596" width="790" height="14" fill="#e8eaed"/>
+<rect x="230" y="596" width="783.0" height="14" fill="#1a73e8"/>
+<rect x="1013.0" y="596" width="7.0" height="14" fill="#fbbc04"/>
+<text x="1032.0" y="608.0" font-family="Arial, sans-serif" font-size="11" text-anchor="start" fill="#202124">99.1% DOI (4,227/4,265)</text>
+<text x="12.0" y="633.0" font-family="Arial, sans-serif" font-size="12" text-anchor="start" fill="#202124">SIGMOD</text>
+<rect x="230" y="620" width="790" height="14" fill="#e8eaed"/>
+<rect x="230" y="620" width="782.9" height="14" fill="#1a73e8"/>
+<rect x="1012.9" y="620" width="7.1" height="14" fill="#fbbc04"/>
+<text x="1032.0" y="632.0" font-family="Arial, sans-serif" font-size="11" text-anchor="start" fill="#202124">99.1% DOI (4,519/4,560)</text>
+<text x="12.0" y="657.0" font-family="Arial, sans-serif" font-size="12" text-anchor="start" fill="#202124">SIGGRAPH</text>
+<rect x="230" y="644" width="790" height="14" fill="#e8eaed"/>
+<rect x="230" y="644" width="776.8" height="14" fill="#1a73e8"/>
+<rect x="1006.8" y="644" width="13.2" height="14" fill="#fbbc04"/>
+<text x="1032.0" y="656.0" font-family="Arial, sans-serif" font-size="11" text-anchor="start" fill="#202124">98.3% DOI (1,535/1,561)</text>
+<text x="12.0" y="681.0" font-family="Arial, sans-serif" font-size="12" text-anchor="start" fill="#202124">CGA</text>
+<rect x="230" y="668" width="790" height="14" fill="#e8eaed"/>
+<rect x="230" y="668" width="776.7" height="14" fill="#1a73e8"/>
+<rect x="1006.7" y="668" width="13.3" height="14" fill="#fbbc04"/>
+<text x="1032.0" y="680.0" font-family="Arial, sans-serif" font-size="11" text-anchor="start" fill="#202124">98.3% DOI (3,088/3,141)</text>
+<text x="12.0" y="705.0" font-family="Arial, sans-serif" font-size="12" text-anchor="start" fill="#202124">InfoVis</text>
+<rect x="230" y="692" width="790" height="14" fill="#e8eaed"/>
+<rect x="230" y="692" width="776.2" height="14" fill="#1a73e8"/>
+<rect x="1006.2" y="692" width="13.8" height="14" fill="#fbbc04"/>
+<text x="1032.0" y="704.0" font-family="Arial, sans-serif" font-size="11" text-anchor="start" fill="#202124">98.3% DOI (282/287)</text>
+<text x="12.0" y="729.0" font-family="Arial, sans-serif" font-size="12" text-anchor="start" fill="#202124">AVI</text>
+<rect x="230" y="716" width="790" height="14" fill="#e8eaed"/>
+<rect x="230" y="716" width="773.2" height="14" fill="#1a73e8"/>
+<rect x="1003.2" y="716" width="16.8" height="14" fill="#fbbc04"/>
+<text x="1032.0" y="728.0" font-family="Arial, sans-serif" font-size="11" text-anchor="start" fill="#202124">97.9% DOI (1,427/1,458)</text>
+<text x="12.0" y="753.0" font-family="Arial, sans-serif" font-size="12" text-anchor="start" fill="#202124">IVAPP</text>
+<rect x="230" y="740" width="790" height="14" fill="#e8eaed"/>
+<rect x="230" y="740" width="768.9" height="14" fill="#1a73e8"/>
+<rect x="998.9" y="740" width="21.1" height="14" fill="#fbbc04"/>
+<text x="1032.0" y="752.0" font-family="Arial, sans-serif" font-size="11" text-anchor="start" fill="#202124">97.3% DOI (73/75)</text>
+<text x="12.0" y="777.0" font-family="Arial, sans-serif" font-size="12" text-anchor="start" fill="#202124">Supercomputing</text>
+<rect x="230" y="764" width="790" height="14" fill="#e8eaed"/>
+<rect x="230" y="764" width="765.5" height="14" fill="#1a73e8"/>
+<rect x="995.5" y="764" width="24.5" height="14" fill="#fbbc04"/>
+<text x="1032.0" y="776.0" font-family="Arial, sans-serif" font-size="11" text-anchor="start" fill="#202124">96.9% DOI (2,407/2,484)</text>
+<text x="12.0" y="801.0" font-family="Arial, sans-serif" font-size="12" text-anchor="start" fill="#202124">KDD</text>
+<rect x="230" y="788" width="790" height="14" fill="#e8eaed"/>
+<rect x="230" y="788" width="762.2" height="14" fill="#1a73e8"/>
+<rect x="992.2" y="788" width="27.8" height="14" fill="#fbbc04"/>
+<text x="1032.0" y="800.0" font-family="Arial, sans-serif" font-size="11" text-anchor="start" fill="#202124">96.5% DOI (7,207/7,470)</text>
+<text x="12.0" y="825.0" font-family="Arial, sans-serif" font-size="12" text-anchor="start" fill="#202124">SIBGRAPI</text>
+<rect x="230" y="812" width="790" height="14" fill="#e8eaed"/>
+<rect x="230" y="812" width="756.2" height="14" fill="#1a73e8"/>
+<rect x="986.2" y="812" width="33.8" height="14" fill="#fbbc04"/>
+<text x="1032.0" y="824.0" font-family="Arial, sans-serif" font-size="11" text-anchor="start" fill="#202124">95.7% DOI (1,433/1,497)</text>
+<text x="12.0" y="849.0" font-family="Arial, sans-serif" font-size="12" text-anchor="start" fill="#202124">VIS</text>
+<rect x="230" y="836" width="790" height="14" fill="#e8eaed"/>
+<rect x="230" y="836" width="750.9" height="14" fill="#1a73e8"/>
+<rect x="980.9" y="836" width="39.1" height="14" fill="#fbbc04"/>
+<text x="1032.0" y="848.0" font-family="Arial, sans-serif" font-size="11" text-anchor="start" fill="#202124">95.1% DOI (1,423/1,497)</text>
+<text x="12.0" y="873.0" font-family="Arial, sans-serif" font-size="12" text-anchor="start" fill="#202124">Interact</text>
+<rect x="230" y="860" width="790" height="14" fill="#e8eaed"/>
+<rect x="230" y="860" width="570.2" height="14" fill="#1a73e8"/>
+<rect x="800.2" y="860" width="219.8" height="14" fill="#fbbc04"/>
+<text x="1032.0" y="872.0" font-family="Arial, sans-serif" font-size="11" text-anchor="start" fill="#202124">72.2% DOI (2,291/3,174)</text>
+<text x="12.0" y="897.0" font-family="Arial, sans-serif" font-size="12" text-anchor="start" fill="#202124">VMV</text>
+<rect x="230" y="884" width="790" height="14" fill="#e8eaed"/>
+<rect x="230" y="884" width="355.8" height="14" fill="#1a73e8"/>
+<rect x="585.8" y="884" width="434.2" height="14" fill="#fbbc04"/>
+<text x="1032.0" y="896.0" font-family="Arial, sans-serif" font-size="11" text-anchor="start" fill="#202124">45.0% DOI (372/826)</text>
+<text x="12.0" y="921.0" font-family="Arial, sans-serif" font-size="12" text-anchor="start" fill="#202124">Graphics Interface</text>
+<rect x="230" y="908" width="790" height="14" fill="#e8eaed"/>
+<rect x="230" y="908" width="239.4" height="14" fill="#1a73e8"/>
+<rect x="469.4" y="908" width="550.6" height="14" fill="#fbbc04"/>
+<text x="1032.0" y="920.0" font-family="Arial, sans-serif" font-size="11" text-anchor="start" fill="#202124">30.3% DOI (277/914)</text>
+<text x="12.0" y="945.0" font-family="Arial, sans-serif" font-size="12" text-anchor="start" fill="#202124">BCS HCI</text>
+<rect x="230" y="932" width="790" height="14" fill="#e8eaed"/>
+<rect x="230" y="932" width="228.2" height="14" fill="#1a73e8"/>
+<rect x="458.2" y="932" width="561.8" height="14" fill="#fbbc04"/>
+<text x="1032.0" y="944.0" font-family="Arial, sans-serif" font-size="11" text-anchor="start" fill="#202124">28.9% DOI (331/1,146)</text>
+<text x="230.0" y="980.0" font-family="Arial, sans-serif" font-size="11" text-anchor="start" fill="#202124">blue = with DOI, yellow = missing DOI</text>
+</svg>

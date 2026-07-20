@@ -316,6 +316,19 @@ def fetch_work_by_doi(client_config: OpenAlexClientConfig, doi: str) -> dict[str
                     retry_after = str(response.json().get("retryAfter") or "")
                 except ValueError:
                     pass
+                if attempt < client_config.max_retries:
+                    try:
+                        sleep_seconds = float(retry_after) if retry_after else client_config.retry_backoff
+                    except ValueError:
+                        sleep_seconds = client_config.retry_backoff
+                    sleep_seconds = max(sleep_seconds, client_config.retry_backoff * (2**attempt))
+                    print(
+                        f"OpenAlex 429; sleeping {sleep_seconds:.2f}s before retry "
+                        f"{attempt + 1}/{client_config.max_retries}",
+                        file=sys.stderr,
+                    )
+                    time.sleep(sleep_seconds)
+                    continue
                 return {
                     "cache_schema_version": CACHE_SCHEMA_VERSION,
                     "doi": doi,

@@ -3,6 +3,8 @@
 | CHI | ACM Conference on Human Factors in Computing Systems |
 | TVCG | IEEE Transactions on Visualization and Computer Graphics |
 | VIS | IEEE Visualization Conference (IEEE VIS) |
+| InfoVis | IEEE Information Visualization Conference |
+| SciVis | IEEE Scientific Visualization Conference |
 | EuroVis | Eurographics Conference on Visualization |
 | PacificVis | IEEE Pacific Visualization Symposium |
 | IUI | ACM International Conference on Intelligent User Interfaces |
@@ -31,7 +33,7 @@
 | KDD | ACM SIGKDD Conference on Knowledge Discovery and Data Mining |
 | The Visual Computer | The Visual Computer (Springer Journal) |
 | VMV | Vision, Modeling and Visualization Conference |
-| Intelligent Vehicles | IEEE Intelligent Vehicles Symposium (IV) |
+| IV | IEEE Intelligent Vehicles Symposium |
 | Journal of Vis. | Journal of Visualization |
 | SIGMOD | ACM SIGMOD International Conference on Management of Data |
 | BCS HCI | BCS Conference on Human-Computer Interaction |

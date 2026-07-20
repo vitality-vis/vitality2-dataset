@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="520" viewBox="0 0 1800 520">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="20.0" y="26.0" font-family="Arial, sans-serif" font-size="18" text-anchor="start" fill="#202124">Overall year distribution</text>
+<line x1="70" y1="428" x2="1772" y2="428" stroke="#5f6368"/>
+<line x1="70" y1="44" x2="70" y2="428" stroke="#5f6368"/>
+<line x1="70" y1="428.0" x2="1772" y2="428.0" stroke="#f1f3f4"/>
+<text x="62.0" y="432.0" font-family="Arial, sans-serif" font-size="10" text-anchor="end" fill="#202124">0</text>
+<line x1="70" y1="332.0" x2="1772" y2="332.0" stroke="#f1f3f4"/>
+<text x="62.0" y="336.0" font-family="Arial, sans-serif" font-size="10" text-anchor="end" fill="#202124">1,889</text>
+<line x1="70" y1="236.0" x2="1772" y2="236.0" stroke="#f1f3f4"/>
+<text x="62.0" y="240.0" font-family="Arial, sans-serif" font-size="10" text-anchor="end" fill="#202124">3,778</text>
+<line x1="70" y1="140.0" x2="1772" y2="140.0" stroke="#f1f3f4"/>
+<text x="62.0" y="144.0" font-family="Arial, sans-serif" font-size="10" text-anchor="end" fill="#202124">5,667</text>
+<line x1="70" y1="44.0" x2="1772" y2="44.0" stroke="#f1f3f4"/>
+<text x="62.0" y="48.0" font-family="Arial, sans-serif" font-size="10" text-anchor="end" fill="#202124">7,557</text>
+<rect x="70.0" y="425.3" width="30.2" height="2.7" fill="#188038"/>
+<text x="85.1" y="446" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#202124" transform="rotate(45 85.1 446)">1974</text>
+<rect x="102.2" y="424.8" width="30.2" height="3.2" fill="#188038"/>
+<rect x="134.3" y="424.1" width="30.2" height="3.9" fill="#188038"/>
+<rect x="166.5" y="423.9" width="30.2" height="4.1" fill="#188038"/>
+<rect x="198.6" y="422.5" width="30.2" height="5.5" fill="#188038"/>
+<rect x="230.8" y="423.7" width="30.2" height="4.3" fill="#188038"/>
+<text x="245.8" y="446" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#202124" transform="rotate(45 245.8 446)">1979</text>
+<rect x="262.9" y="423.3" width="30.2" height="4.7" fill="#188038"/>
+<rect x="295.1" y="420.0" width="30.2" height="8.0" fill="#188038"/>
+<rect x="327.2" y="417.9" width="30.2" height="10.1" fill="#188038"/>
+<rect x="359.4" y="419.4" width="30.2" height="8.6" fill="#188038"/>
+<rect x="391.5" y="417.3" width="30.2" height="10.7" fill="#188038"/>
+<text x="406.6" y="446" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#202124" transform="rotate(45 406.6 446)">1984</text>
+<rect x="423.7" y="413.9" width="30.2" height="14.1" fill="#188038"/>
+<rect x="455.8" y="411.2" width="30.2" height="16.8" fill="#188038"/>
+<rect x="488.0" y="408.4" width="30.2" height="19.6" fill="#188038"/>
+<rect x="520.1" y="405.8" width="30.2" height="22.2" fill="#188038"/>
+<rect x="552.3" y="410.1" width="30.2" height="17.9" fill="#188038"/>
+<text x="567.3" y="446" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#202124" transform="rotate(45 567.3 446)">1989</text>
+<rect x="584.4" y="397.4" width="30.2" height="30.6" fill="#188038"/>
+<rect x="616.6" y="405.7" width="30.2" height="22.3" fill="#188038"/>
+<rect x="648.7" y="398.4" width="30.2" height="29.6" fill="#188038"/>
+<rect x="680.9" y="402.5" width="30.2" height="25.5" fill="#188038"/>
+<rect x="713.0" y="380.1" width="30.2" height="47.9" fill="#188038"/>
+<text x="728.1" y="446" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#202124" transform="rotate(45 728.1 446)">1994</text>
+<rect x="745.2" y="374.9" width="30.2" height="53.1" fill="#188038"/>
+<rect x="777.3" y="371.3" width="30.2" height="56.7" fill="#188038"/>
+<rect x="809.5" y="367.0" width="30.2" height="61.0" fill="#188038"/>
+<rect x="841.6" y="378.4" width="30.2" height="49.6" fill="#188038"/>
+<rect x="873.8" y="367.3" width="30.2" height="60.7" fill="#188038"/>
+<text x="888.8" y="446" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#202124" transform="rotate(45 888.8 446)">1999</text>
+<rect x="905.9" y="354.1" width="30.2" height="73.9" fill="#188038"/>
+<rect x="938.1" y="345.0" width="30.2" height="83.0" fill="#188038"/>
+<rect x="970.2" y="346.6" width="30.2" height="81.4" fill="#188038"/>
+<rect x="1002.4" y="329.6" width="30.2" height="98.4" fill="#188038"/>
+<rect x="1034.5" y="319.5" width="30.2" height="108.5" fill="#188038"/>
+<text x="1049.6" y="446" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#202124" transform="rotate(45 1049.6 446)">2004</text>
+<rect x="1066.7" y="325.3" width="30.2" height="102.7" fill="#188038"/>
+<rect x="1098.8" y="313.5" width="30.2" height="114.5" fill="#188038"/>
+<rect x="1131.0" y="318.3" width="30.2" height="109.7" fill="#188038"/>
+<rect x="1163.1" y="292.8" width="30.2" height="135.2" fill="#188038"/>
+<rect x="1195.3" y="291.0" width="30.2" height="137.0" fill="#188038"/>
+<text x="1210.4" y="446" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#202124" transform="rotate(45 1210.4 446)">2009</text>
+<rect x="1227.4" y="278.2" width="30.2" height="149.8" fill="#188038"/>
+<rect x="1259.6" y="255.7" width="30.2" height="172.3" fill="#188038"/>
+<rect x="1291.7" y="241.9" width="30.2" height="186.1" fill="#188038"/>
+<rect x="1323.9" y="247.3" width="30.2" height="180.7" fill="#188038"/>
+<rect x="1356.0" y="228.8" width="30.2" height="199.2" fill="#188038"/>
+<text x="1371.1" y="446" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#202124" transform="rotate(45 1371.1 446)">2014</text>
+<rect x="1388.2" y="241.9" width="30.2" height="186.1" fill="#188038"/>
+<rect x="1420.3" y="223.8" width="30.2" height="204.2" fill="#188038"/>
+<rect x="1452.5" y="228.7" width="30.2" height="199.3" fill="#188038"/>
+<rect x="1484.6" y="213.6" width="30.2" height="214.4" fill="#188038"/>
+<rect x="1516.8" y="187.1" width="30.2" height="240.9" fill="#188038"/>
+<text x="1531.9" y="446" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#202124" transform="rotate(45 1531.9 446)">2019</text>
+<rect x="1548.9" y="176.6" width="30.2" height="251.4" fill="#188038"/>
+<rect x="1581.1" y="186.6" width="30.2" height="241.4" fill="#188038"/>
+<rect x="1613.2" y="186.0" width="30.2" height="242.0" fill="#188038"/>
+<rect x="1645.4" y="149.8" width="30.2" height="278.2" fill="#188038"/>
+<rect x="1677.5" y="104.5" width="30.2" height="323.5" fill="#188038"/>
+<text x="1692.6" y="446" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#202124" transform="rotate(45 1692.6 446)">2024</text>
+<rect x="1709.7" y="44.0" width="30.2" height="384.0" fill="#188038"/>
+<rect x="1741.8" y="184.5" width="30.2" height="243.5" fill="#188038"/>
+<text x="1756.9" y="446" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#202124" transform="rotate(45 1756.9 446)">2026</text>
+</svg>

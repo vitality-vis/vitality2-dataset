@@ -1,72 +1,75 @@
-source,dblp_source
-CHI,CHI
-CHI,CHI Extended Abstracts
-CHI,CHI Conference Companion
-CHI,CHI 95 Conference Companion
-CHI,CHI (2)
-CHI,CHI (1)
-TVCG,IEEE Trans. Vis. Comput. Graph.
-VIS,IEEE Visualization
-VIS,IEEE VIS (Short Papers)
-VIS,IEEE VIS
-EuroVis,EuroVis (Short Papers)
-EuroVis,EuroVis
-EuroVis,EuroVis (STARs)
-PacificVis,PacificVis
-IUI,IUI
-IUI,IUI Companion
-AVI,AVI
-AVI,Advanced Visual Interfaces
-SIGGRAPH,SIGGRAPH
-CGF,Comput. Graph. Forum
-CSCW,CSCW
-CSCW,CSCW Companion
-CSCW,CSCW (Companion)
-DIS,Conference on Designing Interactive Systems
-DIS,Conference on Designing Interactive Systems (Companion Volume)
-DIS,DIS
-DIS,Symposium on Designing Interactive Systems
-DIS,onference on Designing Interactive Systems (Companion Volume)
-CGA,IEEE Computer Graphics and Applications
-UIST,UIST
-UIST,UIST (Adjunct Volume)
-UIST,ACM Symposium on User Interface Software and Technology
-UIST,UIST Adjunct
-VAST,IEEE VAST
-VAST,VAST
-VAST,VAST (Short and Project Papers)
-VAST,IEEE VAST@IEEE VIS
-BELIV,BELIV
-BioVis,BioVis
-IVAPP,IVAPP
-ICDM,ICDM
-Information Vis.,Inf. Vis.
-SIBGRAPI,SIBGRAPI
-UbiComp,UbiComp
-Supercomputing,International Conference on Supercomputing
-Supercomputing,ICS
-Graphics Interface,Graphics Interface
-SIGGRAPH Asia,SIGGRAPH Asia
-Diagrams,Diagrams
-Interact,INTERACT
-Interact,INTERACT (4)
-Interact,INTERACT (2)
-Interact,INTERACT (1)
-Interact,INTERACT (3)
-Interact,INTERACT (5)
-VCBM,VCBM
-KDD,KDD
-KDD,KDD (2)
-KDD,KDD (1)
-The Visual Computer,Vis. Comput.
-VMV,VMV
-Intelligent Vehicles,IV
-Intelligent Vehicles,IV (1)
-Intelligent Vehicles,IV (2)
-Journal of Vis.,J. Vis.
-SIGMOD,SIGMOD Conference
-BCS HCI,BCS HCI
-BCS HCI,BCS HCI (2)
-BCS HCI,BCS HCI (1)
-TOCHI,ACM Trans. Comput. Hum. Interact.
-Cognitive Science,Cogn. Sci.
+source,dblp_source,Full paper
+CHI,CHI,yes
+CHI,CHI Extended Abstracts,no
+CHI,CHI Conference Companion,no
+CHI,CHI 95 Conference Companion,no
+CHI,CHI (2),yes
+CHI,CHI (1),yes
+TVCG,IEEE Trans. Vis. Comput. Graph.,yes
+VIS,IEEE Visualization,yes
+VIS,IEEE VIS (Short Papers),no
+VIS,IEEE VIS,yes
+EuroVis,EuroVis (Short Papers),no
+EuroVis,EuroVis,yes
+EuroVis,EuroVis (STARs),yes
+EuroVis,EuroVAST@EuroVis,no
+PacificVis,PacificVis,yes
+IUI,IUI,yes
+IUI,IUI Companion,no
+AVI,AVI,yes
+AVI,Advanced Visual Interfaces,yes
+SIGGRAPH,SIGGRAPH,yes
+CGF,Comput. Graph. Forum,yes
+CSCW,CSCW,yes
+CSCW,CSCW Companion,no
+CSCW,CSCW (Companion),no
+DIS,Conference on Designing Interactive Systems,yes
+DIS,Conference on Designing Interactive Systems (Companion Volume),no
+DIS,DIS,yes
+DIS,Symposium on Designing Interactive Systems,yes
+DIS,onference on Designing Interactive Systems (Companion Volume),no
+CGA,IEEE Computer Graphics and Applications,yes
+UIST,UIST,yes
+UIST,UIST (Adjunct Volume),no
+UIST,ACM Symposium on User Interface Software and Technology,yes
+UIST,UIST Adjunct,no
+VAST,IEEE VAST,yes
+VAST,VAST,yes
+VAST,VAST (Short and Project Papers),no
+VAST,IEEE VAST@IEEE VIS,yes
+BELIV,BELIV,yes
+BioVis,BioVis,yes
+IVAPP,IVAPP,yes
+ICDM,ICDM,yes
+Information Vis.,Inf. Vis.,yes
+SIBGRAPI,SIBGRAPI,yes
+UbiComp,UbiComp,yes
+Supercomputing,International Conference on Supercomputing,yes
+Supercomputing,ICS,yes
+Graphics Interface,Graphics Interface,yes
+SIGGRAPH Asia,SIGGRAPH Asia,yes
+Diagrams,Diagrams,yes
+Interact,INTERACT,yes
+Interact,INTERACT (4),yes
+Interact,INTERACT (2),yes
+Interact,INTERACT (1),yes
+Interact,INTERACT (3),yes
+Interact,INTERACT (5),yes
+VCBM,VCBM,yes
+KDD,KDD,yes
+KDD,KDD (2),yes
+KDD,KDD (1),yes
+The Visual Computer,Vis. Comput.,yes
+VMV,VMV,yes
+IV,IV,yes
+IV,IV (1),yes
+IV,IV (2),yes
+Journal of Vis.,J. Vis.,yes
+SIGMOD,SIGMOD Conference,yes
+BCS HCI,BCS HCI,yes
+BCS HCI,BCS HCI (2),yes
+BCS HCI,BCS HCI (1),yes
+TOCHI,ACM Trans. Comput. Hum. Interact.,yes
+Cognitive Science,Cogn. Sci.,yes
+InfoVis,INFOVIS,yes
+SciVis,SciVis,yes

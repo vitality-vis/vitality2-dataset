@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="520" viewBox="0 0 900 520">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="20.0" y="26.0" font-family="Arial, sans-serif" font-size="18" text-anchor="start" fill="#202124">EuroVis year distribution</text>
+<line x1="70" y1="428" x2="872" y2="428" stroke="#5f6368"/>
+<line x1="70" y1="44" x2="70" y2="428" stroke="#5f6368"/>
+<line x1="70" y1="428.0" x2="872" y2="428.0" stroke="#f1f3f4"/>
+<text x="62.0" y="432.0" font-family="Arial, sans-serif" font-size="10" text-anchor="end" fill="#202124">0</text>
+<line x1="70" y1="332.0" x2="872" y2="332.0" stroke="#f1f3f4"/>
+<text x="62.0" y="336.0" font-family="Arial, sans-serif" font-size="10" text-anchor="end" fill="#202124">10</text>
+<line x1="70" y1="236.0" x2="872" y2="236.0" stroke="#f1f3f4"/>
+<text x="62.0" y="240.0" font-family="Arial, sans-serif" font-size="10" text-anchor="end" fill="#202124">21</text>
+<line x1="70" y1="140.0" x2="872" y2="140.0" stroke="#f1f3f4"/>
+<text x="62.0" y="144.0" font-family="Arial, sans-serif" font-size="10" text-anchor="end" fill="#202124">32</text>
+<line x1="70" y1="44.0" x2="872" y2="44.0" stroke="#f1f3f4"/>
+<text x="62.0" y="48.0" font-family="Arial, sans-serif" font-size="10" text-anchor="end" fill="#202124">43</text>
+<rect x="70.0" y="88.7" width="38.2" height="339.3" fill="#188038"/>
+<text x="89.1" y="446" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#202124" transform="rotate(45 89.1 446)">2005</text>
+<rect x="110.2" y="44.0" width="38.2" height="384.0" fill="#188038"/>
+<rect x="150.4" y="115.4" width="38.2" height="312.6" fill="#188038"/>
+<rect x="190.6" y="428.0" width="38.2" height="0.0" fill="#188038"/>
+<rect x="230.8" y="428.0" width="38.2" height="0.0" fill="#188038"/>
+<rect x="271.0" y="303.0" width="38.2" height="125.0" fill="#188038"/>
+<text x="290.1" y="446" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#202124" transform="rotate(45 290.1 446)">2010</text>
+<rect x="311.2" y="428.0" width="38.2" height="0.0" fill="#188038"/>
+<rect x="351.4" y="240.5" width="38.2" height="187.5" fill="#188038"/>
+<rect x="391.6" y="267.3" width="38.2" height="160.7" fill="#188038"/>
+<rect x="431.8" y="160.1" width="38.2" height="267.9" fill="#188038"/>
+<rect x="472.0" y="151.2" width="38.2" height="276.8" fill="#188038"/>
+<text x="491.1" y="446" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#202124" transform="rotate(45 491.1 446)">2015</text>
+<rect x="512.2" y="204.7" width="38.2" height="223.3" fill="#188038"/>
+<rect x="552.4" y="160.1" width="38.2" height="267.9" fill="#188038"/>
+<rect x="592.6" y="240.5" width="38.2" height="187.5" fill="#188038"/>
+<rect x="632.8" y="231.5" width="38.2" height="196.5" fill="#188038"/>
+<rect x="673.0" y="151.2" width="38.2" height="276.8" fill="#188038"/>
+<text x="692.1" y="446" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#202124" transform="rotate(45 692.1 446)">2020</text>
+<rect x="713.2" y="249.4" width="38.2" height="178.6" fill="#188038"/>
+<rect x="753.4" y="240.5" width="38.2" height="187.5" fill="#188038"/>
+<rect x="793.6" y="249.4" width="38.2" height="178.6" fill="#188038"/>
+<rect x="833.8" y="267.3" width="38.2" height="160.7" fill="#188038"/>
+<text x="852.9" y="446" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#202124" transform="rotate(45 852.9 446)">2024</text>
+</svg>

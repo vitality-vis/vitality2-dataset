@@ -16,6 +16,7 @@ import shutil
 import sys
 import xml.sax
 from collections import OrderedDict
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TextIO
 
@@ -30,6 +31,12 @@ DOI_PREFIXES = (
     "http://dx.doi.org/",
     "doi:",
 )
+
+
+@dataclass(frozen=True)
+class SourceMappingEntry:
+    source: str
+    fullpaper: bool
 
 
 def first(values: list[str]) -> str:
@@ -52,29 +59,44 @@ def extract_doi(ees: list[str]) -> str:
     return ""
 
 
-def load_source_mapping(path: Path) -> dict[str, str]:
-    """Load dblp_source -> source mapping from CSV."""
+def parse_bool(value: str) -> bool:
+    normalized = normalize_text(value).casefold()
+    if normalized in {"yes", "true", "1", "y"}:
+        return True
+    if normalized in {"no", "false", "0", "n"}:
+        return False
+    raise SystemExit(f"Invalid Full paper value: {value!r}")
 
-    mapping: dict[str, str] = {}
+
+def load_source_mapping(path: Path) -> dict[str, SourceMappingEntry]:
+    """Load dblp_source -> source/fullpaper mapping from CSV."""
+
+    mapping: dict[str, SourceMappingEntry] = {}
     with path.open("r", encoding="utf-8", newline="") as handle:
         reader = csv.DictReader(handle)
-        required = {"source", "dblp_source"}
+        required = {"source", "dblp_source", "Full paper"}
         if not required.issubset(reader.fieldnames or []):
-            raise SystemExit(f"{path} must contain columns: source,dblp_source")
+            raise SystemExit(f"{path} must contain columns: source,dblp_source,Full paper")
 
         for row in reader:
             source = normalize_text(row.get("source", ""))
             dblp_source = normalize_text(row.get("dblp_source", ""))
+            fullpaper = parse_bool(row.get("Full paper", "yes"))
             if not source or not dblp_source:
                 continue
 
             existing = mapping.get(dblp_source)
-            if existing is not None and existing != source:
+            if existing is not None and existing.source != source:
                 raise SystemExit(
                     f"Conflicting mapping for DBLP source {dblp_source!r}: "
-                    f"{existing!r} vs {source!r}"
+                    f"{existing.source!r} vs {source!r}"
                 )
-            mapping[dblp_source] = source
+            if existing is not None and existing.fullpaper != fullpaper:
+                raise SystemExit(
+                    f"Conflicting Full paper value for DBLP source {dblp_source!r}: "
+                    f"{existing.fullpaper!r} vs {fullpaper!r}"
+                )
+            mapping[dblp_source] = SourceMappingEntry(source=source, fullpaper=fullpaper)
 
     if not mapping:
         raise SystemExit(f"No source mappings loaded from {path}")
@@ -174,7 +196,7 @@ class DblpHandler(xml.sax.handler.ContentHandler):
     def __init__(
         self,
         writer: SourceJsonWriter,
-        source_mapping: dict[str, str],
+        source_mapping: dict[str, SourceMappingEntry],
         limit: int | None = None,
     ) -> None:
         super().__init__()
@@ -233,12 +255,12 @@ class DblpHandler(xml.sax.handler.ContentHandler):
 
         if name == self.current_record_type:
             self.seen_target_records += 1
-            source = self.source_mapping.get(self.dblp_source)
-            if source is None:
+            mapping_entry = self.source_mapping.get(self.dblp_source)
+            if mapping_entry is None:
                 self.skipped_unmapped += 1
             else:
-                paper = self._build_paper(source)
-                self.writer.write(source, paper)
+                paper = self._build_paper(mapping_entry)
+                self.writer.write(mapping_entry.source, paper)
                 self.exported += 1
             self.current_record_type = None
             self.current_field = None
@@ -247,17 +269,18 @@ class DblpHandler(xml.sax.handler.ContentHandler):
             if self.limit is not None and self.exported >= self.limit:
                 raise StopParsing()
 
-    def _build_paper(self, source: str) -> dict[str, object]:
+    def _build_paper(self, mapping_entry: SourceMappingEntry) -> dict[str, object]:
         return {
             "title": self.title,
             "authors": self.authors,
-            "source": source,
+            "source": mapping_entry.source,
             "dblp_source": self.dblp_source,
             "year": self.year,
             "doi": extract_doi(self.ees),
             "abstract": "",
             "keywords": [],
             "citationCounts": None,
+            "fullpaper": mapping_entry.fullpaper,
         }
 
 
@@ -285,7 +308,7 @@ def parse_args() -> argparse.Namespace:
         "--mapping",
         type=Path,
         default=Path("data/dblp/source_mapping.csv"),
-        help="CSV with source,dblp_source columns.",
+        help="CSV with source,dblp_source,Full paper columns.",
     )
     parser.add_argument(
         "--overwrite",
