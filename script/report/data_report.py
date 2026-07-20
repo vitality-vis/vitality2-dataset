@@ -24,6 +24,10 @@ class SourceStats:
     total: int = 0
     with_doi: int = 0
     without_doi: int = 0
+    with_abstract: int = 0
+    without_abstract: int = 0
+    complete: int = 0
+    with_doi_without_abstract: int = 0
     dblp_sources: Counter[str] = field(default_factory=Counter)
     years: Counter[str] = field(default_factory=Counter)
 
@@ -48,33 +52,47 @@ def normalize_year(value: object) -> str:
     return text if text.isdigit() else "Unknown"
 
 
-def read_stats(input_dir: Path) -> tuple[dict[str, SourceStats], Counter[str]]:
+def read_stats(input_dirs: list[Path]) -> tuple[dict[str, SourceStats], Counter[str]]:
     stats_by_source: dict[str, SourceStats] = {}
     overall_years: Counter[str] = Counter()
 
-    for path in sorted(input_dir.glob("*.json")):
-        if path.name == "_source_manifest.json":
-            continue
+    for input_dir in input_dirs:
+        for path in sorted(input_dir.glob("*.json")):
+            if path.name == "_source_manifest.json":
+                continue
 
-        with path.open("r", encoding="utf-8") as handle:
-            papers = json.load(handle)
+            with path.open("r", encoding="utf-8") as handle:
+                papers = json.load(handle)
 
-        for paper in papers:
-            source = str(paper.get("source") or "Unknown").strip() or "Unknown"
-            stats = stats_by_source.setdefault(source, SourceStats(source=source))
-            stats.total += 1
+            for paper in papers:
+                source = str(paper.get("source") or "Unknown").strip() or "Unknown"
+                stats = stats_by_source.setdefault(source, SourceStats(source=source))
+                stats.total += 1
 
-            dblp_source = str(paper.get("dblp_source") or "Unknown").strip() or "Unknown"
-            stats.dblp_sources[dblp_source] += 1
+                dblp_source = str(paper.get("dblp_source") or "Unknown").strip() or "Unknown"
+                stats.dblp_sources[dblp_source] += 1
 
-            if str(paper.get("doi") or "").strip():
-                stats.with_doi += 1
-            else:
-                stats.without_doi += 1
+                has_doi = bool(str(paper.get("doi") or "").strip())
+                has_abstract = bool(str(paper.get("abstract") or "").strip())
 
-            year = normalize_year(paper.get("year"))
-            stats.years[year] += 1
-            overall_years[year] += 1
+                if has_doi:
+                    stats.with_doi += 1
+                else:
+                    stats.without_doi += 1
+
+                if has_abstract:
+                    stats.with_abstract += 1
+                else:
+                    stats.without_abstract += 1
+
+                if has_doi and has_abstract:
+                    stats.complete += 1
+                elif has_doi and not has_abstract:
+                    stats.with_doi_without_abstract += 1
+
+                year = normalize_year(paper.get("year"))
+                stats.years[year] += 1
+                overall_years[year] += 1
 
     return stats_by_source, overall_years
 
@@ -89,6 +107,13 @@ def write_summary_csv(path: Path, stats_by_source: dict[str, SourceStats]) -> No
                 "with_doi",
                 "without_doi",
                 "doi_percent",
+                "with_abstract",
+                "without_abstract",
+                "abstract_percent",
+                "complete",
+                "complete_percent",
+                "with_doi_without_abstract",
+                "with_doi_without_abstract_percent",
                 "dblp_sources",
                 "year_min",
                 "year_max",
@@ -104,6 +129,13 @@ def write_summary_csv(path: Path, stats_by_source: dict[str, SourceStats]) -> No
                     "with_doi": stats.with_doi,
                     "without_doi": stats.without_doi,
                     "doi_percent": f"{percent(stats.with_doi, stats.total):.2f}",
+                    "with_abstract": stats.with_abstract,
+                    "without_abstract": stats.without_abstract,
+                    "abstract_percent": f"{percent(stats.with_abstract, stats.total):.2f}",
+                    "complete": stats.complete,
+                    "complete_percent": f"{percent(stats.complete, stats.total):.2f}",
+                    "with_doi_without_abstract": stats.with_doi_without_abstract,
+                    "with_doi_without_abstract_percent": f"{percent(stats.with_doi_without_abstract, stats.total):.2f}",
                     "dblp_sources": "; ".join(
                         f"{source}:{count}"
                         for source, count in sorted(
@@ -162,6 +194,55 @@ def write_doi_chart(path: Path, stats_by_source: dict[str, SourceStats]) -> None
         )
         parts.append(svg_text(left + chart_w + 12, y + 12, label, 11))
     parts.append(svg_text(left, height - 10, "blue = with DOI, yellow = missing DOI", 11))
+    parts.append("</svg>")
+    path.write_text("\n".join(parts), encoding="utf-8")
+
+
+def write_completeness_chart(path: Path, stats_by_source: dict[str, SourceStats]) -> None:
+    rows = sorted(
+        stats_by_source.values(),
+        key=lambda item: (-percent(item.complete, item.total), -item.total, item.source.casefold()),
+    )
+    width = 1200
+    left = 230
+    right = 230
+    top = 44
+    row_h = 24
+    bar_h = 14
+    chart_w = width - left - right
+    height = top + row_h * len(rows) + 34
+    parts = [
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">',
+        '<rect width="100%" height="100%" fill="#ffffff"/>',
+        svg_text(20, 24, "Paper completeness by source", 18),
+        svg_text(left, 42, "0%", 11, "middle"),
+        svg_text(left + chart_w / 2, 42, "50%", 11, "middle"),
+        svg_text(left + chart_w, 42, "100%", 11, "middle"),
+    ]
+    for i, stats in enumerate(rows):
+        y = top + i * row_h
+        complete_w = chart_w * percent(stats.complete, stats.total) / 100.0
+        no_abstract_w = chart_w * percent(stats.with_doi_without_abstract, stats.total) / 100.0
+        no_doi_w = chart_w - complete_w - no_abstract_w
+        parts.append(svg_text(12, y + 13, stats.source, 12))
+        parts.append(f'<rect x="{left}" y="{y}" width="{chart_w}" height="{bar_h}" fill="#e8eaed"/>')
+        parts.append(f'<rect x="{left}" y="{y}" width="{complete_w:.1f}" height="{bar_h}" fill="#188038"/>')
+        if no_abstract_w > 0:
+            parts.append(
+                f'<rect x="{left + complete_w:.1f}" y="{y}" width="{no_abstract_w:.1f}" '
+                f'height="{bar_h}" fill="#d93025"/>'
+            )
+        if no_doi_w > 0:
+            parts.append(
+                f'<rect x="{left + complete_w + no_abstract_w:.1f}" y="{y}" width="{no_doi_w:.1f}" '
+                f'height="{bar_h}" fill="#fbbc04"/>'
+            )
+        label = (
+            f"{fmt_pct(percent(stats.complete, stats.total))} complete "
+            f"({stats.complete:,}/{stats.total:,})"
+        )
+        parts.append(svg_text(left + chart_w + 12, y + 12, label, 11))
+    parts.append(svg_text(left, height - 10, "green = complete, red = missing abstract, yellow = missing DOI", 11))
     parts.append("</svg>")
     path.write_text("\n".join(parts), encoding="utf-8")
 
@@ -241,6 +322,7 @@ def write_markdown_report(
     stats_by_source: dict[str, SourceStats],
     overall_years: Counter[str],
     doi_chart_name: str,
+    completeness_chart_name: str,
     year_chart_name: str,
     source_year_charts: dict[str, str],
     summary_csv_name: str,
@@ -248,6 +330,10 @@ def write_markdown_report(
     total = sum(stats.total for stats in stats_by_source.values())
     with_doi = sum(stats.with_doi for stats in stats_by_source.values())
     without_doi = sum(stats.without_doi for stats in stats_by_source.values())
+    with_abstract = sum(stats.with_abstract for stats in stats_by_source.values())
+    without_abstract = sum(stats.without_abstract for stats in stats_by_source.values())
+    complete = sum(stats.complete for stats in stats_by_source.values())
+    with_doi_without_abstract = sum(stats.with_doi_without_abstract for stats in stats_by_source.values())
     numeric_years = sorted(int(year) for year in overall_years if year.isdigit())
 
     lines = [
@@ -259,6 +345,10 @@ def write_markdown_report(
         f"- Papers: {total:,}",
         f"- With DOI: {with_doi:,} ({fmt_pct(percent(with_doi, total))})",
         f"- Missing DOI: {without_doi:,} ({fmt_pct(percent(without_doi, total))})",
+        f"- With abstract: {with_abstract:,} ({fmt_pct(percent(with_abstract, total))})",
+        f"- Missing abstract: {without_abstract:,} ({fmt_pct(percent(without_abstract, total))})",
+        f"- Complete: {complete:,} ({fmt_pct(percent(complete, total))})",
+        f"- With DOI but missing abstract: {with_doi_without_abstract:,} ({fmt_pct(percent(with_doi_without_abstract, total))})",
     ]
     if numeric_years:
         lines.append(f"- Year range: {numeric_years[0]}-{numeric_years[-1]}")
@@ -271,6 +361,10 @@ def write_markdown_report(
         "",
         f"![DOI coverage]({doi_chart_name})",
         "",
+        "## Paper Completeness",
+        "",
+        f"![Paper completeness]({completeness_chart_name})",
+        "",
         "## Year Distribution",
         "",
         f"![Year distribution]({year_chart_name})",
@@ -279,8 +373,8 @@ def write_markdown_report(
         "",
         f"Machine-readable summary: [{summary_csv_name}]({summary_csv_name})",
         "",
-        "| Source | Papers | DBLP sources | With DOI | Missing DOI | Year range |",
-        "|---|---:|---|---:|---:|---|",
+        "| Source | Papers | DBLP sources | Complete | Missing abstract | Missing DOI | Year range |",
+        "|---|---:|---|---:|---:|---:|---|",
     ]
 
     sorted_stats = sorted(stats_by_source.values(), key=lambda item: (-item.total, item.source.casefold()))
@@ -295,6 +389,15 @@ def write_markdown_report(
         year_range = f"{numeric[0]}-{numeric[-1]}" if numeric else "Unknown"
         doi_summary = f"{stats.with_doi:,} ({fmt_pct(percent(stats.with_doi, stats.total))})"
         missing_doi_summary = f"{stats.without_doi:,} ({fmt_pct(percent(stats.without_doi, stats.total))})"
+        abstract_summary = f"{stats.with_abstract:,} ({fmt_pct(percent(stats.with_abstract, stats.total))})"
+        missing_abstract_summary = (
+            f"{stats.without_abstract:,} ({fmt_pct(percent(stats.without_abstract, stats.total))})"
+        )
+        complete_summary = f"{stats.complete:,} ({fmt_pct(percent(stats.complete, stats.total))})"
+        doi_no_abstract_summary = (
+            f"{stats.with_doi_without_abstract:,} "
+            f"({fmt_pct(percent(stats.with_doi_without_abstract, stats.total))})"
+        )
         lines.append(
             "| "
             + " | ".join(
@@ -302,7 +405,8 @@ def write_markdown_report(
                     stats.source,
                     f"{stats.total:,}",
                     dblp_sources,
-                    doi_summary,
+                    complete_summary,
+                    doi_no_abstract_summary,
                     missing_doi_summary,
                     year_range,
                 ]
@@ -324,6 +428,10 @@ def write_markdown_report(
                 ),
                 f"- With DOI: {doi_summary}",
                 f"- Missing DOI: {missing_doi_summary}",
+                f"- With abstract: {abstract_summary}",
+                f"- Missing abstract: {missing_abstract_summary}",
+                f"- Complete: {complete_summary}",
+                f"- With DOI but missing abstract: {doi_no_abstract_summary}",
                 f"- Year range: {year_range}",
                 "",
                 f"![{stats.source} year distribution]({source_year_charts[stats.source]})",
@@ -341,8 +449,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--input-dir",
         type=Path,
-        default=Path("data/dblp/split_source"),
-        help="Directory containing split source JSON files.",
+        default=None,
+        help="Directory containing source JSON files. Defaults to data/papers/enriched and data/papers/missing.",
+    )
+    parser.add_argument(
+        "--papers-dir",
+        type=Path,
+        default=Path("data/papers"),
+        help="Directory containing enriched/ and missing/ paper state directories.",
     )
     parser.add_argument(
         "--output-dir",
@@ -359,16 +473,22 @@ def main() -> int:
         shutil.rmtree(args.output_dir)
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
-    stats_by_source, overall_years = read_stats(args.input_dir)
+    input_dirs = [args.input_dir] if args.input_dir else [args.papers_dir / "enriched", args.papers_dir / "missing"]
+    stats_by_source, overall_years = read_stats(input_dirs)
     if not stats_by_source:
-        raise SystemExit(f"No split source JSON files found in {args.input_dir}")
+        raise SystemExit(
+            "No source JSON files found in "
+            + ", ".join(str(path) for path in input_dirs)
+        )
 
     doi_chart = args.output_dir / "doi_coverage.svg"
+    completeness_chart = args.output_dir / "paper_completeness.svg"
     year_chart = args.output_dir / "year_distribution.svg"
     summary_csv = args.output_dir / "source_summary.csv"
     report_md = args.output_dir / "data_report.md"
 
     write_doi_chart(doi_chart, stats_by_source)
+    write_completeness_chart(completeness_chart, stats_by_source)
     write_year_chart(year_chart, overall_years, "Overall year distribution")
     source_year_charts = write_source_year_charts(args.output_dir, stats_by_source)
     write_summary_csv(summary_csv, stats_by_source)
@@ -377,6 +497,7 @@ def main() -> int:
         stats_by_source,
         overall_years,
         doi_chart.name,
+        completeness_chart.name,
         year_chart.name,
         source_year_charts,
         summary_csv.name,
