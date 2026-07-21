@@ -482,17 +482,21 @@
     }
 
     function renderSourceYearChart(source, rows) {
-      const items = rows.filter(r => r.source === source).sort((a, b) => Number(a.year) - Number(b.year));
+      const years = [...new Set(rows.map(r => Number(r.year)).filter(Boolean))].sort((a, b) => a - b);
+      const byYear = new Map(
+        rows.filter(r => r.source === source).map(r => [Number(r.year), Number(r.paper_count || 0)])
+      );
+      const items = years.map(year => ({ year, paper_count: byYear.get(year) || 0 }));
       const max = Math.max(1, ...items.map(r => Number(r.paper_count || 0)));
-      const width = Math.max(900, items.length * 34 + 80), height = 320, left = 54, bottom = 48, top = 18;
-      const barW = Math.max(8, Math.min(24, (width - left - 30) / Math.max(1, items.length) - 4));
+      const barW = 18, gap = 4, left = 54, bottom = 56, top = 18, height = 320;
+      const width = left + 12 + items.length * (barW + gap) + 24;
       let svg = `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`;
       svg += `<text x="${left}" y="14" font-size="13" fill="#667085">${esc(source)}</text>`;
-      svg += `<line x1="${left}" y1="${height - bottom}" x2="${width - 20}" y2="${height - bottom}" class="axis"/>`;
+      svg += `<line x1="${left}" y1="${height - bottom}" x2="${width - 12}" y2="${height - bottom}" class="axis"/>`;
       svg += `<line x1="${left}" y1="${top}" x2="${left}" y2="${height - bottom}" class="axis"/>`;
       items.forEach((r, i) => {
         const value = Number(r.paper_count || 0);
-        const x = left + 12 + i * (barW + 6);
+        const x = left + 12 + i * (barW + gap);
         const h = (value / max) * (height - bottom - top - 18);
         const y = height - bottom - h;
         const tip = dataTip("Source year count", [
@@ -500,10 +504,12 @@
           ["Year", r.year],
           ["Papers", fmt(value)]
         ]);
-        svg += `<rect class="mark" data-tip="${tip}" x="${x}" y="${y}" width="${barW}" height="${h}" fill="var(--cyan)"></rect>`;
-        if (i % Math.ceil(items.length / 18) === 0) {
-          svg += `<text x="${x + barW / 2}" y="${height - 28}" transform="rotate(-45 ${x + barW / 2} ${height - 28})" font-size="10" text-anchor="end" fill="#667085">${r.year}</text>`;
+        if (value > 0) {
+          svg += `<rect class="mark" data-tip="${tip}" x="${x}" y="${y}" width="${barW}" height="${h}" fill="var(--cyan)"></rect>`;
+        } else {
+          svg += `<rect class="mark" data-tip="${tip}" x="${x}" y="${height - bottom - 1}" width="${barW}" height="1" fill="#e2e8f0"></rect>`;
         }
+        svg += `<text x="${x + barW / 2}" y="${height - 34}" transform="rotate(-60 ${x + barW / 2} ${height - 34})" font-size="10" text-anchor="end" fill="#667085">${r.year}</text>`;
       });
       svg += `</svg>`;
       $("sourceYearChart").innerHTML = svg;
