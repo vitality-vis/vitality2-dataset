@@ -59,6 +59,28 @@ def extract_doi(ees: list[str]) -> str:
     return ""
 
 
+def paper_uid(doi: str, dblp_key: str, title: str, authors: list[str], year: str, dblp_source: str) -> str:
+    doi = normalize_text(doi)
+    if doi:
+        return f"doi:{doi.casefold()}"
+    dblp_key = normalize_text(dblp_key)
+    if dblp_key:
+        return f"dblp:{dblp_key}"
+
+    raw = json.dumps(
+        {
+            "title": normalize_text(title).casefold(),
+            "authors": [normalize_text(author).casefold() for author in authors],
+            "year": normalize_text(year),
+            "dblp_source": normalize_text(dblp_source).casefold(),
+        },
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return "fallback:" + hashlib.sha1(raw.encode("utf-8")).hexdigest()
+
+
 def parse_bool(value: str) -> bool:
     normalized = normalize_text(value).casefold()
     if normalized in {"yes", "true", "1", "y"}:
@@ -207,6 +229,7 @@ class DblpHandler(xml.sax.handler.ContentHandler):
         self.current_field: str | None = None
         self.current_chars: list[str] = []
         self.source_field: str | None = None
+        self.dblp_key = ""
         self.title = ""
         self.authors: list[str] = []
         self.dblp_source = ""
@@ -220,6 +243,7 @@ class DblpHandler(xml.sax.handler.ContentHandler):
         if name in RECORD_TAGS:
             self.current_record_type = name
             self.source_field = SOURCE_FIELDS[name]
+            self.dblp_key = normalize_text(attrs.get("key", ""))
             self.title = ""
             self.authors = []
             self.dblp_source = ""
@@ -270,13 +294,23 @@ class DblpHandler(xml.sax.handler.ContentHandler):
                 raise StopParsing()
 
     def _build_paper(self, mapping_entry: SourceMappingEntry) -> dict[str, object]:
+        doi = extract_doi(self.ees)
         return {
+            "paper_uid": paper_uid(
+                doi=doi,
+                dblp_key=self.dblp_key,
+                title=self.title,
+                authors=self.authors,
+                year=self.year,
+                dblp_source=self.dblp_source,
+            ),
+            "dblp_key": self.dblp_key,
             "title": self.title,
             "authors": self.authors,
             "source": mapping_entry.source,
             "dblp_source": self.dblp_source,
             "year": self.year,
-            "doi": extract_doi(self.ees),
+            "doi": doi,
             "abstract": "",
             "keywords": [],
             "citationCounts": None,

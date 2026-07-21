@@ -16,7 +16,7 @@ from typing import Iterable, TypedDict
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_COLLECTION = "vitality_papers"
+DEFAULT_COLLECTION = "paper_new"
 DEFAULT_EMBEDDING_DIM = 1536
 
 
@@ -44,7 +44,8 @@ def load_dotenv_file(path: Path) -> None:
 
 def schema_plan(embedding_dim: int) -> list[FieldPlan]:
     return [
-        {"name": "id", "dtype": "INT64", "primary": True, "params": {"auto_id": True}},
+        {"name": "paper_uid", "dtype": "VARCHAR", "primary": True, "params": {"max_length": 1024}},
+        {"name": "dblp_key", "dtype": "VARCHAR", "params": {"max_length": 1024, "nullable": True}},
         {"name": "doi", "dtype": "VARCHAR", "params": {"max_length": 512, "nullable": True}},
         {
             "name": "embedding",
@@ -91,7 +92,8 @@ def create_schema(embedding_dim: int):
     from pymilvus import CollectionSchema, DataType, FieldSchema, Function, FunctionType
 
     fields = [
-        FieldSchema(name="id", dtype=DataType.INT64, is_primary=True, auto_id=True),
+        FieldSchema(name="paper_uid", dtype=DataType.VARCHAR, max_length=1024, is_primary=True),
+        FieldSchema(name="dblp_key", dtype=DataType.VARCHAR, max_length=1024, nullable=True),
         FieldSchema(name="doi", dtype=DataType.VARCHAR, max_length=512, nullable=True),
         FieldSchema(name="embedding", dtype=DataType.FLOAT_VECTOR, dim=embedding_dim, nullable=True),
         FieldSchema(name="umap", dtype=DataType.JSON, nullable=True),
@@ -187,32 +189,37 @@ def create_collection(args: argparse.Namespace) -> None:
 
     schema = create_schema(args.embedding_dim)
     collection = Collection(name=args.collection, schema=schema)
-    collection.create_index(
-        field_name="embedding",
-        index_params={
-            "index_type": args.index_type,
-            "metric_type": args.metric_type,
-            "params": {},
-        },
-    )
-    collection.create_index(
-        field_name="search_sparse",
-        index_params={
-            "index_type": "SPARSE_INVERTED_INDEX",
-            "metric_type": "BM25",
-            "params": {
-                "inverted_index_algo": "DAAT_MAXSCORE",
-            },
-        },
-    )
 
-    if args.load:
+    if not args.defer_index:
+        collection.create_index(
+            field_name="embedding",
+            index_params={
+                "index_type": args.index_type,
+                "metric_type": args.metric_type,
+                "params": {},
+            },
+        )
+        collection.create_index(
+            field_name="search_sparse",
+            index_params={
+                "index_type": "SPARSE_INVERTED_INDEX",
+                "metric_type": "BM25",
+                "params": {
+                    "inverted_index_algo": "DAAT_MAXSCORE",
+                },
+            },
+        )
+
+    if args.load and not args.defer_index:
         collection.load()
 
     print(f"Created collection: {args.collection}")
-    print(f"Embedding index: {args.index_type} / {args.metric_type}")
-    print("BM25 index: SPARSE_INVERTED_INDEX / BM25")
-    if args.load:
+    if args.defer_index:
+        print("Indexes deferred. Run script/index_zilliz_collection.py after uploading.")
+    else:
+        print(f"Embedding index: {args.index_type} / {args.metric_type}")
+        print("BM25 index: SPARSE_INVERTED_INDEX / BM25")
+    if args.load and not args.defer_index:
         print("Collection loaded.")
 
 
@@ -234,6 +241,11 @@ def parse_args() -> argparse.Namespace:
         "--load",
         action="store_true",
         help="Load the collection after creating the embedding index.",
+    )
+    parser.add_argument(
+        "--defer-index",
+        action="store_true",
+        help="Create only the schema. Build indexes later after bulk upload.",
     )
     parser.add_argument(
         "--keep-existing",

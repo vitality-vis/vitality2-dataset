@@ -5,11 +5,14 @@
 
 # Large DBLP dump files
 data/dblp/dump/*.xml
+data/dblp/dump/*.xml.gz
+data/dblp/dump/*.dtd
 !data/dblp/dump/.gitkeep
 
 # Generated data
 data/dblp/split_source/
 data/papers/*
+data/zilliz/*
 !data/papers/.gitkeep
 tmp/
 
