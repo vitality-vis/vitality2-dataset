@@ -45,3 +45,7 @@ ENV/
 
 # Logs
 *.log
+
+# Agents
+.agents/
+skills-lock.json

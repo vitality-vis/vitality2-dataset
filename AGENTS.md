@@ -39,6 +39,9 @@ Scripts:
 - `script/enrich_openalex_by_doi.py`: uses OpenAlex by DOI to enrich abstract, keywords, and citation count, writing results under `data/papers/`.
 - `script/enrich_semantic_scholar_missing.py`: uses Semantic Scholar to fill records still missing abstracts after OpenAlex.
 - `script/enrich_crossref_missing.py`: uses Crossref to fill remaining records still missing abstracts after the previous enrichment steps.
+- `script/create_zilliz_collection.py`: creates the Zilliz collection schema.
+- `script/upload_papers_to_zilliz.py`: uploads enriched and missing paper records to Zilliz.
+- `script/stats_service.py`: provides a small HTTP stats service backed by Zilliz aggregate queries.
 - `script/report/data_report.py`: reads split JSON files and generates the report bundle under `data/report/data_report/`.
 
 Common commands:
@@ -51,6 +54,9 @@ python3 script/enrich_openalex_by_doi.py --overwrite
 python3 script/enrich_semantic_scholar_missing.py
 python3 script/enrich_crossref_missing.py
 python3 script/report/data_report.py
+python3 script/create_zilliz_collection.py
+python3 script/create_zilliz_collection.py --execute
+python3 script/upload_papers_to_zilliz.py
 ```
 
 ## Enrichment workflow
@@ -62,6 +68,14 @@ After DBLP splitting, enrich metadata in this order:
 3. Run Crossref last to fill the remaining missing abstracts.
 
 Enriched records are stored under `data/papers/enriched/`; records still missing abstracts stay under `data/papers/missing/`. Cache files are stored under `data/papers/cache/`.
+
+## Zilliz workflow
+
+After enrichment, create the Zilliz collection first, then upload records from `data/papers/enriched/` and `data/papers/missing/`.
+
+Use `script/create_zilliz_collection.py` without `--execute` to preview the schema. Use `--execute` only when ready to create the collection. Then run `script/upload_papers_to_zilliz.py` to upload the data.
+
+Use `script/stats_service.py` when a simple API is needed for collection-level statistics.
 
 Exported paper fields:
 
