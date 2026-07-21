@@ -36,6 +36,28 @@
     h1 { margin: 0 0 12px; font-size: 20px; font-weight: 650; }
     h2 { margin: 0 0 14px; font-size: 16px; font-weight: 650; }
     h3 { margin: 10px 0 8px; font-size: 13px; font-weight: 650; color: var(--muted); }
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .section-header h2 { margin: 0; }
+    .export-btn {
+      height: 30px;
+      padding: 0 10px;
+      background: #fff;
+      color: var(--text);
+      border-color: var(--line);
+      font-weight: 500;
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+    .export-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
     .controls {
       display: grid;
       grid-template-columns: minmax(260px, 1.2fr) minmax(260px, 1.4fr) 180px 120px;
@@ -195,7 +217,10 @@
     </section>
 
     <section>
-      <h2>Source / Year Heatmap</h2>
+      <div class="section-header">
+        <h2>Source / Year Heatmap</h2>
+        <button id="exportHeatmapCsv" class="export-btn" disabled>Export CSV</button>
+      </div>
       <div id="heatmap" class="chart"></div>
       <h3>Source year details</h3>
       <div id="sourceButtons" class="source-actions"></div>
@@ -222,7 +247,34 @@
     $("uri").value = localStorage.getItem("zilliz_uri") || DEFAULT_URI;
     $("token").value = localStorage.getItem("zilliz_token") || DEFAULT_TOKEN;
 
+    let heatmapRows = [];
+
     function fmt(n) { return Number(n || 0).toLocaleString(); }
+    function csvCell(value) {
+      const text = String(value ?? "");
+      return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+    }
+    function downloadCsv(filename, rows) {
+      const csv = rows.map(row => row.map(csvCell).join(",")).join("\n") + "\n";
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+    function exportHeatmapCsv() {
+      if (!heatmapRows.length) return;
+      const sources = [...new Set(heatmapRows.map(r => r.source))].sort();
+      const byKey = new Map(heatmapRows.map(r => [`${r.source}::${r.year}`, Number(r.paper_count || 0)]));
+      const years = [...new Set(heatmapRows.map(r => Number(r.year)).filter(Boolean))].sort((a, b) => a - b);
+      const out = [["source", ...years]];
+      sources.forEach(source => {
+        out.push([source, ...years.map(year => byKey.get(`${source}::${year}`) || 0)]);
+      });
+      downloadCsv("source_year_heatmap.csv", out);
+    }
     function esc(s) {
       return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
     }
@@ -384,6 +436,8 @@
     }
 
     function renderHeatmap(rows) {
+      heatmapRows = rows;
+      $("exportHeatmapCsv").disabled = !rows.length;
       const sources = [...new Set(rows.map(r => r.source))].sort();
       const years = [...new Set(rows.map(r => Number(r.year)).filter(Boolean))].sort((a, b) => a - b);
       const byKey = new Map(rows.map(r => [`${r.source}::${r.year}`, Number(r.paper_count || 0)]));
@@ -493,6 +547,7 @@
     }
 
     $("loadBtn").addEventListener("click", load);
+    $("exportHeatmapCsv").addEventListener("click", exportHeatmapCsv);
     $("settingsToggle").addEventListener("click", () => {
       const header = $("pageHeader");
       const collapsed = header.classList.toggle("collapsed");
