@@ -36,6 +36,28 @@
     h1 { margin: 0 0 12px; font-size: 20px; font-weight: 650; }
     h2 { margin: 0 0 14px; font-size: 16px; font-weight: 650; }
     h3 { margin: 10px 0 8px; font-size: 13px; font-weight: 650; color: var(--muted); }
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .section-header h2 { margin: 0; }
+    .export-btn {
+      height: 30px;
+      padding: 0 10px;
+      background: #fff;
+      color: var(--text);
+      border-color: var(--line);
+      font-weight: 500;
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+    .export-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
     .controls {
       display: grid;
       grid-template-columns: minmax(260px, 1.2fr) minmax(260px, 1.4fr) 180px 120px;
@@ -195,7 +217,10 @@
     </section>
 
     <section>
-      <h2>Source / Year Heatmap</h2>
+      <div class="section-header">
+        <h2>Source / Year Heatmap</h2>
+        <button id="exportHeatmapCsv" class="export-btn" disabled>Export CSV</button>
+      </div>
       <div id="heatmap" class="chart"></div>
       <h3>Source year details</h3>
       <div id="sourceButtons" class="source-actions"></div>
@@ -222,7 +247,34 @@
     $("uri").value = localStorage.getItem("zilliz_uri") || DEFAULT_URI;
     $("token").value = localStorage.getItem("zilliz_token") || DEFAULT_TOKEN;
 
+    let heatmapRows = [];
+
     function fmt(n) { return Number(n || 0).toLocaleString(); }
+    function csvCell(value) {
+      const text = String(value ?? "");
+      return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+    }
+    function downloadCsv(filename, rows) {
+      const csv = rows.map(row => row.map(csvCell).join(",")).join("\n") + "\n";
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+    function exportHeatmapCsv() {
+      if (!heatmapRows.length) return;
+      const sources = [...new Set(heatmapRows.map(r => r.source))].sort();
+      const byKey = new Map(heatmapRows.map(r => [`${r.source}::${r.year}`, Number(r.paper_count || 0)]));
+      const years = [...new Set(heatmapRows.map(r => Number(r.year)).filter(Boolean))].sort((a, b) => a - b);
+      const out = [["source", ...years]];
+      sources.forEach(source => {
+        out.push([source, ...years.map(year => byKey.get(`${source}::${year}`) || 0)]);
+      });
+      downloadCsv("source_year_heatmap.csv", out);
+    }
     function esc(s) {
       return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
     }
@@ -384,6 +436,8 @@
     }
 
     function renderHeatmap(rows) {
+      heatmapRows = rows;
+      $("exportHeatmapCsv").disabled = !rows.length;
       const sources = [...new Set(rows.map(r => r.source))].sort();
       const years = [...new Set(rows.map(r => Number(r.year)).filter(Boolean))].sort((a, b) => a - b);
       const byKey = new Map(rows.map(r => [`${r.source}::${r.year}`, Number(r.paper_count || 0)]));
@@ -428,17 +482,21 @@
     }
 
     function renderSourceYearChart(source, rows) {
-      const items = rows.filter(r => r.source === source).sort((a, b) => Number(a.year) - Number(b.year));
+      const years = [...new Set(rows.map(r => Number(r.year)).filter(Boolean))].sort((a, b) => a - b);
+      const byYear = new Map(
+        rows.filter(r => r.source === source).map(r => [Number(r.year), Number(r.paper_count || 0)])
+      );
+      const items = years.map(year => ({ year, paper_count: byYear.get(year) || 0 }));
       const max = Math.max(1, ...items.map(r => Number(r.paper_count || 0)));
-      const width = Math.max(900, items.length * 34 + 80), height = 320, left = 54, bottom = 48, top = 18;
-      const barW = Math.max(8, Math.min(24, (width - left - 30) / Math.max(1, items.length) - 4));
+      const barW = 18, gap = 4, left = 54, bottom = 56, top = 18, height = 320;
+      const width = left + 12 + items.length * (barW + gap) + 24;
       let svg = `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`;
       svg += `<text x="${left}" y="14" font-size="13" fill="#667085">${esc(source)}</text>`;
-      svg += `<line x1="${left}" y1="${height - bottom}" x2="${width - 20}" y2="${height - bottom}" class="axis"/>`;
+      svg += `<line x1="${left}" y1="${height - bottom}" x2="${width - 12}" y2="${height - bottom}" class="axis"/>`;
       svg += `<line x1="${left}" y1="${top}" x2="${left}" y2="${height - bottom}" class="axis"/>`;
       items.forEach((r, i) => {
         const value = Number(r.paper_count || 0);
-        const x = left + 12 + i * (barW + 6);
+        const x = left + 12 + i * (barW + gap);
         const h = (value / max) * (height - bottom - top - 18);
         const y = height - bottom - h;
         const tip = dataTip("Source year count", [
@@ -446,10 +504,12 @@
           ["Year", r.year],
           ["Papers", fmt(value)]
         ]);
-        svg += `<rect class="mark" data-tip="${tip}" x="${x}" y="${y}" width="${barW}" height="${h}" fill="var(--cyan)"></rect>`;
-        if (i % Math.ceil(items.length / 18) === 0) {
-          svg += `<text x="${x + barW / 2}" y="${height - 28}" transform="rotate(-45 ${x + barW / 2} ${height - 28})" font-size="10" text-anchor="end" fill="#667085">${r.year}</text>`;
+        if (value > 0) {
+          svg += `<rect class="mark" data-tip="${tip}" x="${x}" y="${y}" width="${barW}" height="${h}" fill="var(--cyan)"></rect>`;
+        } else {
+          svg += `<rect class="mark" data-tip="${tip}" x="${x}" y="${height - bottom - 1}" width="${barW}" height="1" fill="#e2e8f0"></rect>`;
         }
+        svg += `<text x="${x + barW / 2}" y="${height - 34}" transform="rotate(-60 ${x + barW / 2} ${height - 34})" font-size="10" text-anchor="end" fill="#667085">${r.year}</text>`;
       });
       svg += `</svg>`;
       $("sourceYearChart").innerHTML = svg;
@@ -493,6 +553,7 @@
     }
 
     $("loadBtn").addEventListener("click", load);
+    $("exportHeatmapCsv").addEventListener("click", exportHeatmapCsv);
     $("settingsToggle").addEventListener("click", () => {
       const header = $("pageHeader");
       const collapsed = header.classList.toggle("collapsed");
