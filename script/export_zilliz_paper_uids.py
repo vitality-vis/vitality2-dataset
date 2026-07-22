@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Export existing paper_uid values from a Zilliz paper collection."""
+"""Export existing scalar field values from a Zilliz paper collection."""
 
 from __future__ import annotations
 
@@ -16,14 +16,16 @@ except ModuleNotFoundError:
 
 
 DEFAULT_COLLECTION = "paper_new"
-DEFAULT_OUTPUT = PROJECT_ROOT / "data" / "zilliz" / "paper_new_paper_uids.txt"
+DEFAULT_FIELD = "paper_uid"
+DEFAULT_OUTPUT_TEMPLATE = PROJECT_ROOT / "data" / "zilliz" / "paper_new_{field}s.txt"
 DEFAULT_BATCH_SIZE = 5000
 # Zilliz rejects scalar-only load_fields for this collection, so include the
 # sparse vector field and avoid loading the embedding field.
-LOAD_FIELDS = ["paper_uid", "search_sparse"]
+VECTOR_LOAD_FIELD = "search_sparse"
+PRIMARY_KEY_FIELD = "paper_uid"
 
 
-def normalize_uid(value: Any) -> str:
+def normalize_value(value: Any) -> str:
     return str(value or "").strip()
 
 
@@ -42,11 +44,11 @@ def connect_collection(collection_name: str):
     return Collection(collection_name)
 
 
-def iter_paper_uids(collection, batch_size: int, timeout: float | None) -> Iterable[str]:
+def iter_field_values(collection, field: str, batch_size: int, timeout: float | None) -> Iterable[str]:
     iterator = collection.query_iterator(
         batch_size=batch_size,
         expr="",
-        output_fields=["paper_uid"],
+        output_fields=[field],
         timeout=timeout,
     )
     try:
@@ -55,34 +57,44 @@ def iter_paper_uids(collection, batch_size: int, timeout: float | None) -> Itera
             if not batch:
                 break
             for row in batch:
-                uid = normalize_uid(row.get("paper_uid"))
-                if uid:
-                    yield uid
+                value = normalize_value(row.get(field))
+                if value:
+                    yield value
     finally:
         iterator.close()
 
 
-def write_uid_file(path: Path, uids: set[str]) -> None:
+def write_value_file(path: Path, values: set[str]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = path.with_suffix(path.suffix + ".tmp")
     with tmp_path.open("w", encoding="utf-8") as handle:
-        for uid in sorted(uids):
-            handle.write(uid)
+        for value in sorted(values):
+            handle.write(value)
             handle.write("\n")
     tmp_path.replace(path)
 
 
+def default_output(field: str) -> Path:
+    return Path(str(DEFAULT_OUTPUT_TEMPLATE).format(field=field))
+
+
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Export paper_uid values from Zilliz.")
+    parser = argparse.ArgumentParser(description="Export scalar field values from Zilliz.")
     parser.add_argument("--collection", default=DEFAULT_COLLECTION)
-    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    parser.add_argument(
+        "--field",
+        default=DEFAULT_FIELD,
+        choices=("paper_uid", "dblp_key"),
+        help="Scalar field to export. Use dblp_key for incremental DBLP update filtering.",
+    )
+    parser.add_argument("--output", type=Path, default=None)
     parser.add_argument("--batch-size", type=int, default=DEFAULT_BATCH_SIZE)
     parser.add_argument("--query-timeout", type=float, default=300.0)
-    parser.add_argument("--limit", type=int, default=None, help="Optional UID limit for testing.")
+    parser.add_argument("--limit", type=int, default=None, help="Optional row limit for testing.")
     parser.add_argument(
         "--load",
         action="store_true",
-        help="Load paper_uid plus the lightweight search_sparse vector field before querying.",
+        help="Load the requested scalar field plus the lightweight search_sparse vector field before querying.",
     )
     return parser.parse_args()
 
@@ -95,12 +107,15 @@ def main() -> int:
         raise SystemExit("--query-timeout must be > 0")
     if args.limit is not None and args.limit < 1:
         raise SystemExit("--limit must be >= 1")
+    if args.output is None:
+        args.output = default_output(args.field)
 
     collection = connect_collection(args.collection)
     if args.load:
-        print(f"Loading fields for UID export: {', '.join(LOAD_FIELDS)}", flush=True)
+        load_fields = list(dict.fromkeys([PRIMARY_KEY_FIELD, args.field, VECTOR_LOAD_FIELD]))
+        print(f"Loading fields for export: {', '.join(load_fields)}", flush=True)
         try:
-            collection.load(load_fields=LOAD_FIELDS)
+            collection.load(load_fields=load_fields)
         except TypeError:
             raise SystemExit(
                 "Installed pymilvus does not support load_fields. "
@@ -122,28 +137,29 @@ def main() -> int:
     scanned = 0
     duplicates = 0
     print(
-        f"Querying paper_uid values from {args.collection} "
+        f"Querying {args.field} values from {args.collection} "
         f"(batch_size={args.batch_size}, timeout={args.query_timeout:g}s)",
         flush=True,
     )
-    for uid in iter_paper_uids(collection, args.batch_size, args.query_timeout):
+    for value in iter_field_values(collection, args.field, args.batch_size, args.query_timeout):
         scanned += 1
         before = len(seen)
-        seen.add(uid)
+        seen.add(value)
         if len(seen) == before:
             duplicates += 1
         if scanned % 100000 == 0:
-            print(f"Scanned {scanned} rows; unique uids {len(seen)}", flush=True)
+            print(f"Scanned {scanned} rows; unique values {len(seen)}", flush=True)
         if args.limit is not None and scanned >= args.limit:
             break
 
-    write_uid_file(args.output, seen)
+    write_value_file(args.output, seen)
     manifest = {
         "collection": args.collection,
+        "field": args.field,
         "output": str(args.output),
         "scanned_rows": scanned,
-        "unique_uids": len(seen),
-        "duplicate_uids": duplicates,
+        "unique_values": len(seen),
+        "duplicate_values": duplicates,
     }
     manifest_path = args.output.with_suffix(args.output.suffix + ".manifest.json")
     manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

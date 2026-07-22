@@ -32,8 +32,8 @@ Key files:
 - `data/dblp/source_mapping_candidates_report.md`: manual candidate review file. Indented table rows mark selected DBLP sources.
 - `data/dblp/source_mapping.csv`: final mapping with columns `source,dblp_source,Full paper`.
 - `data/dblp/split_source/`: JSON output split by normalized `source`.
-- `data/zilliz/paper_new_paper_uids.txt`: exported existing `paper_uid` values from Zilliz for update filtering.
-- `data/zilliz/paper_new_paper_uids.txt.manifest.json`: metadata for the UID export.
+- `data/zilliz/paper_new_dblp_keys.txt`: exported existing `dblp_key` values from Zilliz for update filtering.
+- `data/zilliz/paper_new_dblp_keys.txt.manifest.json`: metadata for the DBLP key export.
 - `data/papers/enriched/`: enriched paper JSON files ready for upload.
 - `data/papers/missing/`: paper JSON files still missing abstracts after enrichment.
 - `data/papers/cache/`: local DOI lookup caches for OpenAlex, Semantic Scholar, and Crossref.
@@ -49,8 +49,8 @@ Scripts:
 - `script/download_dblp_dump.py`: downloads and unpacks the DBLP dump.
 - `script/extract_dblp_sources.py`: streams the DBLP dump and writes `data/dblp/dblp_source_list.txt`.
 - `script/split_dblp_by_source.py`: streams the DBLP dump, keeps only DBLP sources listed in `source_mapping.csv`, and writes split JSON files to `data/dblp/split_source/`.
-- `script/export_zilliz_paper_uids.py`: reads existing `paper_uid` values from Zilliz and writes a local UID file.
-- `script/filter_new_dblp_papers.py`: filters split DBLP papers against the local UID file and writes an update batch under `data/papers/updateYYYYMMDD/`.
+- `script/export_zilliz_paper_uids.py`: reads existing scalar values such as `dblp_key` or `paper_uid` from Zilliz and writes a local file.
+- `script/filter_new_dblp_papers.py`: filters split DBLP papers against the local DBLP key file and writes an update batch under `data/papers/updateYYYYMMDD/`.
 - `script/enrich_openalex_by_doi.py`: uses OpenAlex by DOI to enrich abstract, keywords, and citation count, writing results under `data/papers/`.
 - `script/enrich_semantic_scholar_missing.py`: uses Semantic Scholar to fill records still missing abstracts after OpenAlex.
 - `script/enrich_crossref_missing.py`: uses Crossref to fill remaining records still missing abstracts after the previous enrichment steps.
@@ -68,8 +68,8 @@ Scripts:
 - `script/extract_dblp_sources.py`: `--input`, `--output`.
 - `tmp/extract_selected_source_mapping.py`: `--report`, `--output`, `--vitality-mapping`.
 - `script/split_dblp_by_source.py`: `--input`, `--output-dir`, `--mapping`, `--overwrite`, `--max-open-files`, `--limit`.
-- `script/export_zilliz_paper_uids.py`: `--collection`, `--output`, `--batch-size`, `--query-timeout`, `--limit`, `--load`.
-- `script/filter_new_dblp_papers.py`: `--split-dir`, `--uid-file`, `--output-dir`, `--overwrite`, `--limit`.
+- `script/export_zilliz_paper_uids.py`: `--collection`, `--field`, `--output`, `--batch-size`, `--query-timeout`, `--limit`, `--load`.
+- `script/filter_new_dblp_papers.py`: `--split-dir`, `--existing-file`, `--field`, `--uid-file`, `--output-dir`, `--overwrite`, `--limit`.
 - `script/enrich_openalex_by_doi.py`: `--input-dir`, `--output-dir`, `--cache`, `--env-file`, `--api-key`, `--use-env-api-key`, `--email`, `--source`, `--limit`, `--sleep`, `--workers`, `--max-pending`, `--request-timeout`, `--progress-every`, `--max-retries`, `--retry-backoff`, `--overwrite`.
 - `script/enrich_semantic_scholar_missing.py`: `--papers-dir`, `--cache`, `--env-file`, `--api-key`, `--use-env-api-key`, `--use-empty-api-key-header`, `--source`, `--batch-size`, `--request-timeout`, `--max-retries`, `--retry-backoff`, `--rate-limit-retry-sleep`, `--sleep`, `--progress-every`.
 - `script/enrich_crossref_missing.py`: `--papers-dir`, `--cache`, `--env-file`, `--mailto`, `--use-env-mailto`, `--source`, `--request-timeout`, `--max-retries`, `--retry-backoff`, `--rate-limit-retry-sleep`, `--workers`, `--max-pending`, `--rate-limit`, `--sleep`, `--progress-every`.
@@ -87,7 +87,7 @@ python3 script/download_dblp_dump.py
 python3 script/extract_dblp_sources.py
 python3 tmp/extract_selected_source_mapping.py
 python3 script/split_dblp_by_source.py --overwrite
-python3 script/export_zilliz_paper_uids.py
+python3 script/export_zilliz_paper_uids.py --field dblp_key
 python3 script/filter_new_dblp_papers.py
 python3 script/enrich_openalex_by_doi.py --overwrite
 python3 script/enrich_semantic_scholar_missing.py
@@ -121,18 +121,20 @@ Use this workflow after downloading a fresh DBLP dump or changing `data/dblp/sou
 python3 script/split_dblp_by_source.py --overwrite
 ```
 
-2. Export existing `paper_uid` values from Zilliz to a local file:
+2. Export existing `dblp_key` values from Zilliz to a local file:
 
 ```bash
-python3 script/export_zilliz_paper_uids.py --collection paper_new --load --batch-size 5000
+python3 script/export_zilliz_paper_uids.py --collection paper_new --field dblp_key --load --batch-size 5000
 ```
 
 This writes:
 
-- `data/zilliz/paper_new_paper_uids.txt`
-- `data/zilliz/paper_new_paper_uids.txt.manifest.json`
+- `data/zilliz/paper_new_dblp_keys.txt`
+- `data/zilliz/paper_new_dblp_keys.txt.manifest.json`
 
-The export script loads `paper_uid` with `search_sparse` because Zilliz requires a vector field in `load_fields`. If load fails because the sparse index is missing, run:
+Use `dblp_key` as the update baseline. `paper_uid` may change from `dblp:...` to `doi:...` when DOI extraction improves, but DBLP's `key` identifies the same DBLP record across that change.
+
+The export script loads the requested scalar field with `search_sparse` because Zilliz requires a vector field in `load_fields`. If load fails because the sparse index is missing, run:
 
 ```bash
 python3 script/index_zilliz_collection.py --collection paper_new --only search_sparse
@@ -146,7 +148,7 @@ python3 script/filter_new_dblp_papers.py --overwrite
 
 This creates `data/papers/updateYYYYMMDD/` with:
 
-- `split_source/`: only papers whose `paper_uid` is not in the exported Zilliz UID file.
+- `split_source/`: only papers whose `dblp_key` is not in the exported Zilliz DBLP key file.
 - `enriched/`: empty directory for enrichment output.
 - `missing/`: empty directory for enrichment output.
 - `filter_manifest.json`: filtering counts and source-level totals.
