@@ -1,0 +1,17 @@
+# Production sync settings (committed to git).
+# Secrets and Azure endpoint/keys stay in ../.env
+
+dev_collection = "paper_new"
+prod_collection = "paper_prod"
+
+embedding_dim = 1536
+# Logical model id written to each row's embedding_model field.
+# Not the Azure deployment name (that is AZURE_OPENAI_EMBED_DEPLOYMENT in .env).
+embedding_model = "text-embedding-3-small"
+embedding_fields = ["title", "abstract"]
+eligibility_fields = ["doi", "title", "abstract"]
+
+# Keep small: Zilliz/gRPC rejects responses over ~4MB (abstracts + search_text;
+# prod lookups also pull 1536-d embeddings).
+batch_size = 100
+embed_batch_size = 20
