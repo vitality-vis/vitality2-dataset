@@ -13,12 +13,12 @@ python3 -m pip install -r script_prod/requirements.txt
 
 Required `.env` keys: `ZILLIZ_URI`, `ZILLIZ_TOKEN`, `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_EMBED_DEPLOYMENT`, `AZURE_OPENAI_EMBED_API_VERSION`.
 
-Non-secret settings (collections, batch sizes, embedding dim / expected model) live in `script_prod/config.toml`.
+Non-secret settings (collections, batch sizes, embedding dim / expected model / timeout) live in `script_prod/config.toml`.
 
 ## Usage
 
 ```bash
-python3 script_prod/sync_paper_prod.py
+python3 script_prod/sync.py
 ```
 
 It creates `paper_prod` if needed, then: count → per-batch preview (y/n) → embed/upsert → backfill missing embeddings → report.

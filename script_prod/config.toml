@@ -15,3 +15,5 @@ eligibility_fields = ["doi", "title", "abstract"]
 # prod lookups also pull 1536-d embeddings).
 batch_size = 100
 embed_batch_size = 20
+# Per Azure embeddings.create() call; timeouts become retries then has_embedding=false.
+embed_timeout_seconds = 120

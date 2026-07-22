@@ -1,7 +1,7 @@
 """
 Schema and create helper for the production Zilliz collection `paper_prod`.
 
-Used by sync_paper_prod.py — not a standalone CLI entry point.
+Used by sync.py — not a standalone CLI entry point.
 Schema matches `paper_new`, plus:
   - `embedding_model` — logical embedding model id from config.toml
   - `has_embedding` — BOOL set strictly when a dense vector was written successfully
@@ -121,7 +121,7 @@ def ensure_has_embedding_field(client=None) -> bool:
     return True
 
 
-def ensure_paper_prod_collection() -> bool:
+def ensure_prod_collection() -> bool:
     """Create paper_prod if needed; ensure has_embedding exists. Returns True if created."""
     client = connect_zilliz()
 

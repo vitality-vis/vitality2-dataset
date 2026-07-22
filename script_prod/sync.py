@@ -44,7 +44,7 @@ from common import (  # noqa: E402
     uid_in_expr,
     values_equal,
 )
-from create_paper_prod_collection import ensure_paper_prod_collection  # noqa: E402
+from create_prod_collection import ensure_prod_collection  # noqa: E402
 
 
 @dataclass
@@ -391,7 +391,7 @@ def main() -> None:
             "(not leftover placeholders from .env.example)."
         )
 
-    ensure_paper_prod_collection()
+    ensure_prod_collection()
 
     # paper_new often has no dense embedding index; scalar query/iterator still works
     # without load_collection. Only load paper_prod (needed after create / for upserts).
