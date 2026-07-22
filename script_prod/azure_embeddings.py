@@ -12,8 +12,14 @@ from common import EMBED_TIMEOUT_SECONDS, PROJECT_ROOT, load_dotenv_file
 _RETRY_AFTER_RE = re.compile(r"retry after\s+(\d+(?:\.\d+)?)\s+seconds?", re.IGNORECASE)
 
 
+def _parse_deployments(raw: str) -> list[str]:
+    """Split comma/whitespace-separated deployment names; keep order, drop empties."""
+    parts = re.split(r"[\s,]+", (raw or "").strip())
+    return [p for p in parts if p]
+
+
 class AzureEmbedder:
-    """Calls Azure with AZURE_OPENAI_EMBED_DEPLOYMENT (deployment name, not model id)."""
+    """Calls Azure with one or more AZURE_OPENAI_EMBED_DEPLOYMENT names (round-robin)."""
 
     def __init__(
         self,
@@ -28,7 +34,8 @@ class AzureEmbedder:
         load_dotenv_file(PROJECT_ROOT / ".env")
         endpoint = (os.environ.get("AZURE_OPENAI_ENDPOINT") or "").rstrip("/")
         api_key = os.environ.get("AZURE_OPENAI_API_KEY") or ""
-        self.deployment = (deployment or os.environ.get("AZURE_OPENAI_EMBED_DEPLOYMENT") or "").strip()
+        raw_deployment = deployment if deployment is not None else (os.environ.get("AZURE_OPENAI_EMBED_DEPLOYMENT") or "")
+        self.deployments = _parse_deployments(raw_deployment)
         self.api_version = (
             api_version
             or os.environ.get("AZURE_OPENAI_EMBED_API_VERSION")
@@ -36,12 +43,13 @@ class AzureEmbedder:
         )
         if not endpoint or not api_key:
             raise SystemExit(
-                "Missing AZURE_OPENAI_ENDPOINT or AZURE_OPENAI_API_KEY in environment or .env."
+                "Missing AZURE_OPENAI_ENDPOINT or AZURE_OPENAI_API_KEY in environment or project .env."
             )
-        if not self.deployment:
+        if not self.deployments:
             raise SystemExit(
-                "Missing AZURE_OPENAI_EMBED_DEPLOYMENT in environment or .env "
-                "(Azure deployment name; not the same as config embedding_model)."
+                "Missing AZURE_OPENAI_EMBED_DEPLOYMENT in environment or project .env "
+                "(one deployment name, or comma-separated list for round-robin). "
+                "Not the same as config embedding_model."
             )
 
         from openai import AzureOpenAI
@@ -57,6 +65,22 @@ class AzureEmbedder:
         self.max_retries = max_retries
         self.retry_backoff = retry_backoff
         self.timeout_retry_wait = timeout_retry_wait
+        self._rr_index = 0
+        print(
+            f"Azure embeddings: {len(self.deployments)} deployment(s) "
+            f"[{', '.join(self.deployments)}]",
+            flush=True,
+        )
+
+    @property
+    def deployment(self) -> str:
+        """Primary / current deployment name (compat for single-deployment callers)."""
+        return self.deployments[self._rr_index % len(self.deployments)]
+
+    def _next_deployment(self) -> str:
+        dep = self.deployments[self._rr_index % len(self.deployments)]
+        self._rr_index += 1
+        return dep
 
     def _retry_wait_seconds(self, exc: BaseException, attempt: int) -> float:
         """Prefer Azure's 'retry after N seconds'; timeouts wait 60s; else exponential."""
@@ -64,13 +88,11 @@ class AzureEmbedder:
 
         match = _RETRY_AFTER_RE.search(str(exc))
         if match:
-            # +1s buffer past the server hint
             return float(match.group(1)) + 1.0
 
         if isinstance(exc, APITimeoutError):
             return float(self.timeout_retry_wait)
 
-        # httpx / openai sometimes wrap timeouts without APITimeoutError
         msg = str(exc).lower()
         if "timeout" in msg or "timed out" in msg:
             return float(self.timeout_retry_wait)
@@ -80,30 +102,52 @@ class AzureEmbedder:
 
         return self.retry_backoff * (2**attempt)
 
+    def _is_rate_limit(self, exc: BaseException) -> bool:
+        from openai import RateLimitError
+
+        if isinstance(exc, RateLimitError):
+            return True
+        msg = str(exc).lower()
+        return "ratelimitreached" in msg or "rate limit" in msg
+
     def embed_texts(self, texts: Sequence[str]) -> list[list[float] | None]:
         """Embed texts; failed items become None (caller may still upsert)."""
         if not texts:
             return []
 
         last_error: Exception | None = None
+        # Each attempt may try every deployment once before sleeping on rate limits.
         for attempt in range(self.max_retries):
-            try:
-                response = self.client.embeddings.create(
-                    model=self.deployment,
-                    input=list(texts),
-                    timeout=self.timeout,
-                )
-                by_index = {item.index: item.embedding for item in response.data}
-                return [by_index.get(i) for i in range(len(texts))]
-            except Exception as exc:  # noqa: BLE001 - surface and retry API errors
-                last_error = exc
-                sleep_for = self._retry_wait_seconds(exc, attempt)
-                print(
-                    f"Embedding batch failed (attempt {attempt + 1}/{self.max_retries}): {exc}. "
-                    f"Retrying in {sleep_for:.1f}s...",
-                    flush=True,
-                )
-                time.sleep(sleep_for)
+            # Start from next RR slot so load spreads across deployments.
+            start = self._rr_index % len(self.deployments)
+            for offset in range(len(self.deployments)):
+                dep = self.deployments[(start + offset) % len(self.deployments)]
+                try:
+                    response = self.client.embeddings.create(
+                        model=dep,
+                        input=list(texts),
+                        timeout=self.timeout,
+                    )
+                    self._rr_index = (start + offset + 1) % len(self.deployments)
+                    by_index = {item.index: item.embedding for item in response.data}
+                    return [by_index.get(i) for i in range(len(texts))]
+                except Exception as exc:  # noqa: BLE001
+                    last_error = exc
+                    if self._is_rate_limit(exc) and offset + 1 < len(self.deployments):
+                        print(
+                            f"Embedding rate-limited on {dep}; trying next deployment...",
+                            flush=True,
+                        )
+                        continue
+                    sleep_for = self._retry_wait_seconds(exc, attempt)
+                    print(
+                        f"Embedding batch failed on {dep} "
+                        f"(attempt {attempt + 1}/{self.max_retries}): {exc}. "
+                        f"Retrying in {sleep_for:.1f}s...",
+                        flush=True,
+                    )
+                    time.sleep(sleep_for)
+                    break  # next outer attempt
 
         print(f"Embedding batch failed permanently: {last_error}", flush=True)
         return [None] * len(texts)

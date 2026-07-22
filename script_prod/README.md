@@ -13,6 +13,8 @@ python3 -m pip install -r script_prod/requirements.txt
 
 Required `.env` keys: `ZILLIZ_URI`, `ZILLIZ_TOKEN`, `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_EMBED_DEPLOYMENT`, `AZURE_OPENAI_EMBED_API_VERSION`.
 
+`AZURE_OPENAI_EMBED_DEPLOYMENT` accepts one name, or a comma-separated list (round-robin; on rate-limit try the next deployment before sleeping).
+
 Non-secret settings (collections, batch sizes, embedding dim / expected model / timeout) live in `script_prod/config.toml`.
 
 ## Usage
