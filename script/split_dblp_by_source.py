@@ -31,12 +31,13 @@ DOI_PREFIXES = (
     "http://dx.doi.org/",
     "doi:",
 )
+DOI_RE = re.compile(r"10\.\d{4,9}/[^\s<>\"']+", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
 class SourceMappingEntry:
     source: str
-    fullpaper: bool
+    full_paper: bool
 
 
 def first(values: list[str]) -> str:
@@ -49,13 +50,17 @@ def normalize_text(value: str) -> str:
 
 def extract_doi(ees: list[str]) -> str:
     for ee in ees:
-        value = ee.strip()
+        value = normalize_text(ee)
         lower = value.lower()
         for prefix in DOI_PREFIXES:
             if lower.startswith(prefix):
                 return value[len(prefix) :].strip()
         if lower.startswith("10."):
             return value
+
+        match = DOI_RE.search(value)
+        if match:
+            return match.group(0).rstrip(".,;)]}")
     return ""
 
 
@@ -91,7 +96,7 @@ def parse_bool(value: str) -> bool:
 
 
 def load_source_mapping(path: Path) -> dict[str, SourceMappingEntry]:
-    """Load dblp_source -> source/fullpaper mapping from CSV."""
+    """Load dblp_source -> source/full_paper mapping from CSV."""
 
     mapping: dict[str, SourceMappingEntry] = {}
     with path.open("r", encoding="utf-8", newline="") as handle:
@@ -103,7 +108,7 @@ def load_source_mapping(path: Path) -> dict[str, SourceMappingEntry]:
         for row in reader:
             source = normalize_text(row.get("source", ""))
             dblp_source = normalize_text(row.get("dblp_source", ""))
-            fullpaper = parse_bool(row.get("Full paper", "yes"))
+            full_paper = parse_bool(row.get("Full paper", "yes"))
             if not source or not dblp_source:
                 continue
 
@@ -113,12 +118,12 @@ def load_source_mapping(path: Path) -> dict[str, SourceMappingEntry]:
                     f"Conflicting mapping for DBLP source {dblp_source!r}: "
                     f"{existing.source!r} vs {source!r}"
                 )
-            if existing is not None and existing.fullpaper != fullpaper:
+            if existing is not None and existing.full_paper != full_paper:
                 raise SystemExit(
                     f"Conflicting Full paper value for DBLP source {dblp_source!r}: "
-                    f"{existing.fullpaper!r} vs {fullpaper!r}"
+                    f"{existing.full_paper!r} vs {full_paper!r}"
                 )
-            mapping[dblp_source] = SourceMappingEntry(source=source, fullpaper=fullpaper)
+            mapping[dblp_source] = SourceMappingEntry(source=source, full_paper=full_paper)
 
     if not mapping:
         raise SystemExit(f"No source mappings loaded from {path}")
@@ -313,8 +318,8 @@ class DblpHandler(xml.sax.handler.ContentHandler):
             "doi": doi,
             "abstract": "",
             "keywords": [],
-            "citationCounts": None,
-            "fullpaper": mapping_entry.fullpaper,
+            "citation_count": None,
+            "full_paper": mapping_entry.full_paper,
         }
 
 

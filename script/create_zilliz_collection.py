@@ -83,8 +83,8 @@ def schema_plan(embedding_dim: int) -> list[FieldPlan]:
         {"name": "source", "dtype": "VARCHAR", "params": {"max_length": 1024}},
         {"name": "dblp_source", "dtype": "VARCHAR", "params": {"max_length": 1024}},
         {"name": "year", "dtype": "INT64"},
-        {"name": "citationCounts", "dtype": "INT64", "params": {"nullable": True}},
-        {"name": "fullpaper", "dtype": "BOOL"},
+        {"name": "citation_count", "dtype": "INT64", "params": {"nullable": True}},
+        {"name": "full_paper", "dtype": "BOOL"},
     ]
 
 
@@ -126,8 +126,8 @@ def create_schema(embedding_dim: int):
         FieldSchema(name="source", dtype=DataType.VARCHAR, max_length=1024),
         FieldSchema(name="dblp_source", dtype=DataType.VARCHAR, max_length=1024),
         FieldSchema(name="year", dtype=DataType.INT64),
-        FieldSchema(name="citationCounts", dtype=DataType.INT64, nullable=True),
-        FieldSchema(name="fullpaper", dtype=DataType.BOOL),
+        FieldSchema(name="citation_count", dtype=DataType.INT64, nullable=True),
+        FieldSchema(name="full_paper", dtype=DataType.BOOL),
     ]
     bm25_function = Function(
         name="search_text_bm25",

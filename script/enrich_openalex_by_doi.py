@@ -392,7 +392,7 @@ def enrich_paper(paper: dict[str, Any], cache_item: dict[str, Any]) -> dict[str,
         if work.get("keywords"):
             out["keywords"] = work["keywords"]
         if work.get("cited_by_count") is not None:
-            out["citationCounts"] = work["cited_by_count"]
+            out["citation_count"] = work["cited_by_count"]
     return out
 
 

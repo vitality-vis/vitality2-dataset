@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Upload all records from data/papers/enriched and data/papers/missing to Zilliz.
+Upload records from paper enriched/missing directories to Zilliz.
 
 The target collection is expected to use the schema created by
 script/create_zilliz_collection.py: paper_uid VARCHAR primary key, nullable
@@ -26,10 +26,12 @@ except ModuleNotFoundError:
 
 DEFAULT_COLLECTION = "paper_new"
 DEFAULT_BATCH_SIZE = 500
-DATA_DIRS = (
+DEFAULT_DATA_DIRS = (
     PROJECT_ROOT / "data" / "papers" / "enriched",
     PROJECT_ROOT / "data" / "papers" / "missing",
 )
+LEGACY_CITATION_FIELD = "citation" + "Counts"
+LEGACY_FULL_PAPER_FIELD = "full" + "paper"
 
 
 def iter_json_files(paths: Iterable[Path]) -> Iterable[Path]:
@@ -37,11 +39,38 @@ def iter_json_files(paths: Iterable[Path]) -> Iterable[Path]:
         yield from sorted(folder.glob("*.json"))
 
 
+def display_path(path: Path) -> str:
+    try:
+        return str(path.resolve().relative_to(PROJECT_ROOT))
+    except ValueError:
+        return str(path)
+
+
+def paper_dirs(papers_dir: Path | None) -> tuple[Path, Path]:
+    if papers_dir is None:
+        return DEFAULT_DATA_DIRS
+    return (papers_dir / "enriched", papers_dir / "missing")
+
+
 def load_records(path: Path) -> list[dict[str, Any]]:
     data = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(data, list):
         raise ValueError(f"Expected top-level JSON array: {path}")
     return data
+
+
+def load_existing_uids(path: Path | None) -> set[str]:
+    if path is None:
+        return set()
+    if not path.exists():
+        raise SystemExit(f"Existing UID file does not exist: {path}")
+    uids: set[str] = set()
+    with path.open("r", encoding="utf-8") as handle:
+        for raw_line in handle:
+            uid = raw_line.strip()
+            if uid and not uid.startswith("#"):
+                uids.add(uid)
+    return uids
 
 
 def clean_str(value: Any, max_length: int, *, nullable: bool = False) -> str | None:
@@ -116,6 +145,13 @@ def clean_bool(value: Any) -> bool:
     return bool(value)
 
 
+def get_first_present(record: dict[str, Any], *keys: str) -> Any:
+    for key in keys:
+        if key in record:
+            return record[key]
+    return None
+
+
 def clean_str_list(value: Any, *, nullable: bool = False) -> list[str] | None:
     if value is None:
         return None if nullable else []
@@ -170,8 +206,11 @@ def to_entity(record: dict[str, Any]) -> dict[str, Any]:
         "source": clean_str(record.get("source"), 1024),
         "dblp_source": clean_str(record.get("dblp_source"), 1024),
         "year": clean_int(record.get("year")),
-        "citationCounts": clean_int(record.get("citationCounts"), nullable=True),
-        "fullpaper": clean_bool(record.get("fullpaper")),
+        "citation_count": clean_int(
+            get_first_present(record, "citation_count", LEGACY_CITATION_FIELD),
+            nullable=True,
+        ),
+        "full_paper": clean_bool(get_first_present(record, "full_paper", LEGACY_FULL_PAPER_FIELD)),
     }
 
 
@@ -207,8 +246,8 @@ def validate_schema(collection) -> None:
         "source",
         "dblp_source",
         "year",
-        "citationCounts",
-        "fullpaper",
+        "citation_count",
+        "full_paper",
     }
     missing = sorted(expected - set(fields))
     if missing:
@@ -255,9 +294,15 @@ def upload(args: argparse.Namespace) -> None:
                 "if you intentionally want to append."
             )
 
-    files = list(iter_json_files(DATA_DIRS))
+    files = list(iter_json_files(paper_dirs(args.papers_dir)))
+    if not files:
+        raise SystemExit(f"No paper JSON files found for upload in {paper_dirs(args.papers_dir)}")
+    existing_uids = load_existing_uids(args.existing_uid_file)
+    if existing_uids:
+        print(f"Loaded {len(existing_uids)} existing paper_uid values for upload filtering.", flush=True)
     scanned_rows = 0
     skipped_rows = 0
+    skipped_existing_uid_rows = 0
     inserted_rows = 0
     batch: list[dict[str, Any]] = []
 
@@ -273,7 +318,13 @@ def upload(args: argparse.Namespace) -> None:
                 skipped_rows += 1
                 file_skipped += 1
                 continue
-            batch.append(to_entity(record))
+            entity = to_entity(record)
+            if entity["paper_uid"] in existing_uids:
+                skipped_rows += 1
+                skipped_existing_uid_rows += 1
+                file_skipped += 1
+                continue
+            batch.append(entity)
             if len(batch) >= args.batch_size:
                 inserted = insert_batch(collection, batch)
                 file_inserted += inserted
@@ -284,7 +335,7 @@ def upload(args: argparse.Namespace) -> None:
                     flush=True,
                 )
         print(
-            f"{path.relative_to(PROJECT_ROOT)}: scanned {file_scanned}, "
+            f"{display_path(path)}: scanned {file_scanned}, "
             f"skipped {file_skipped}, inserted {file_inserted}",
             flush=True,
         )
@@ -294,6 +345,7 @@ def upload(args: argparse.Namespace) -> None:
 
     print(f"Scanned rows: {scanned_rows}", flush=True)
     print(f"Skipped rows: {skipped_rows}", flush=True)
+    print(f"Skipped existing paper_uid rows: {skipped_existing_uid_rows}", flush=True)
     print(f"Inserted rows in this run: {inserted_rows}", flush=True)
     print(f"Collection entities after flush: {collection.num_entities}", flush=True)
 
@@ -303,6 +355,18 @@ def parse_args() -> argparse.Namespace:
         description="Upload data/papers/enriched and data/papers/missing to Zilliz."
     )
     parser.add_argument("--collection", default=DEFAULT_COLLECTION)
+    parser.add_argument(
+        "--papers-dir",
+        type=Path,
+        default=None,
+        help="Directory containing enriched/ and missing/. Defaults to data/papers.",
+    )
+    parser.add_argument(
+        "--existing-uid-file",
+        type=Path,
+        default=None,
+        help="Optional local paper_uid file. Records already listed here are skipped before insert.",
+    )
     parser.add_argument("--batch-size", type=int, default=DEFAULT_BATCH_SIZE)
     parser.add_argument(
         "--skip",

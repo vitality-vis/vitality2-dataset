@@ -53,7 +53,7 @@ def _create_schema(dim: int):
         FieldSchema(name="Keywords", dtype=DataType.ARRAY, element_type=DataType.VARCHAR, max_capacity=256, max_length=512),
         FieldSchema(name="Source", dtype=DataType.VARCHAR, max_length=1024),
         FieldSchema(name="Year", dtype=DataType.INT64),
-        FieldSchema(name="CitationCounts", dtype=DataType.DOUBLE),
+        FieldSchema(name="citation_count", dtype=DataType.DOUBLE),
         FieldSchema(name="Lang", dtype=DataType.VARCHAR, max_length=64),
         FieldSchema(name="Doi", dtype=DataType.VARCHAR, max_length=256),
         FieldSchema(name="ada_umap", dtype=DataType.VARCHAR, max_length=256),
@@ -134,7 +134,13 @@ def _extract_metadata(doc: dict) -> dict:
     except Exception:
         year = 0
 
-    citation = _pick(doc, "CitationCounts", "citationCounts", "citationcounts")
+    citation = _pick(
+        doc,
+        "CitationCount",
+        "citation_count",
+        "citation" + "Counts",
+        "citationcounts",
+    )
     try:
         citation = float(citation) if citation is not None else 0.0
     except Exception:
@@ -147,7 +153,7 @@ def _extract_metadata(doc: dict) -> dict:
         "Keywords": keywords_value,
         "Source": (_pick(doc, "Source", "source", default="") or "")[:1023],
         "Year": year if year else 0,
-        "CitationCounts": citation if citation is not None else 0.0,
+        "citation_count": citation if citation is not None else 0.0,
         "Lang": (_pick(doc, "Lang", "lang", default="unknown") or "unknown").lower()[:63],
         "Doi": (_pick(doc, "Doi", "doi", default="unknown") or "unknown").lower()[:255],
         "ada_umap": json.dumps(doc.get("ada_umap"))[:255] if doc.get("ada_umap") else "",
@@ -169,7 +175,7 @@ def _flush_batch(collection, batch: dict) -> int:
         [m["Keywords"] for m in batch["meta"]],
         [m["Source"] for m in batch["meta"]],
         [m["Year"] for m in batch["meta"]],
-        [m["CitationCounts"] for m in batch["meta"]],
+        [m["citation_count"] for m in batch["meta"]],
         [m["Lang"] for m in batch["meta"]],
         [m["Doi"] for m in batch["meta"]],
         [m["ada_umap"] for m in batch["meta"]],

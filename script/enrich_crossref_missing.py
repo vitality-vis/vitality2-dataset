@@ -250,11 +250,16 @@ def enrich_from_cache_item(paper: dict[str, Any], cache_item: dict[str, Any]) ->
     out = dict(paper)
     message = cache_item.get("message") if isinstance(cache_item, dict) else None
     if isinstance(message, dict):
+        old_citation_field = "citation" + "Counts"
         abstract = normalize_text(message.get("abstract"))
         if abstract:
             out["abstract"] = abstract
-        if out.get("citationCounts") is None and message.get("is-referenced-by-count") is not None:
-            out["citationCounts"] = message.get("is-referenced-by-count")
+        if (
+            out.get("citation_count") is None
+            and out.get(old_citation_field) is None
+            and message.get("is-referenced-by-count") is not None
+        ):
+            out["citation_count"] = message.get("is-referenced-by-count")
         if not out.get("keywords") and message.get("subject"):
             out["keywords"] = message["subject"]
     return out

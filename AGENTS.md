@@ -76,7 +76,7 @@ Scripts:
 - `script/report/data_report.py`: `--input-dir`, `--papers-dir`, `--output-dir`.
 - `script/create_zilliz_collection.py`: `--collection`, `--database`, `--create-database`, `--embedding-dim`, `--metric-type`, `--index-type`, `--load`, `--defer-index`, `--keep-existing`, `--drop-existing`, `--execute`.
 - `script/index_zilliz_collection.py`: `--collection`, `--metric-type`, `--index-type`, `--only`, `--no-load`.
-- `script/upload_papers_to_zilliz.py`: `--collection`, `--batch-size`, `--skip`, `--allow-non-empty`, `--resume`.
+- `script/upload_papers_to_zilliz.py`: `--collection`, `--papers-dir`, `--existing-uid-file`, `--batch-size`, `--skip`, `--allow-non-empty`, `--resume`.
 - `script/create_paper_stats_collection.py`: `--collection`, `--drop-existing`, `--execute`.
 - `script/materialize_paper_stats.py`: `--source-collection`, `--stats-collection`, `--read-batch-size`, `--write-batch-size`, `--replace` / `--no-replace`.
 
@@ -111,6 +111,58 @@ After DBLP splitting, enrich metadata in this order:
 
 Enriched records are stored under `data/papers/enriched/`; records still missing abstracts stay under `data/papers/missing/`. Cache files are stored under `data/papers/cache/`.
 
+## Incremental update workflow
+
+Use this workflow after downloading a fresh DBLP dump or changing `data/dblp/source_mapping.csv`.
+
+1. Rebuild the split DBLP files:
+
+```bash
+python3 script/split_dblp_by_source.py --overwrite
+```
+
+2. Export existing `paper_uid` values from Zilliz to a local file:
+
+```bash
+python3 script/export_zilliz_paper_uids.py --collection paper_new --load --batch-size 5000
+```
+
+This writes:
+
+- `data/zilliz/paper_new_paper_uids.txt`
+- `data/zilliz/paper_new_paper_uids.txt.manifest.json`
+
+The export script loads `paper_uid` with `search_sparse` because Zilliz requires a vector field in `load_fields`. If load fails because the sparse index is missing, run:
+
+```bash
+python3 script/index_zilliz_collection.py --collection paper_new --only search_sparse
+```
+
+3. Filter new papers into an update batch:
+
+```bash
+python3 script/filter_new_dblp_papers.py --overwrite
+```
+
+This creates `data/papers/updateYYYYMMDD/` with:
+
+- `split_source/`: only papers whose `paper_uid` is not in the exported Zilliz UID file.
+- `enriched/`: empty directory for enrichment output.
+- `missing/`: empty directory for enrichment output.
+- `filter_manifest.json`: filtering counts and source-level totals.
+
+4. Enrich only the update batch:
+
+```bash
+python3 script/enrich_openalex_by_doi.py --input-dir data/papers/updateYYYYMMDD/split_source --output-dir data/papers/updateYYYYMMDD --overwrite
+python3 script/enrich_semantic_scholar_missing.py --papers-dir data/papers/updateYYYYMMDD
+python3 script/enrich_crossref_missing.py --papers-dir data/papers/updateYYYYMMDD
+```
+
+The update batch then contains its own `enriched/`, `missing/`, `cache/`, and manifest files. Do not run the default full-data enrichment commands for incremental updates unless a full rebuild is intended.
+
+This workflow stops after enrichment. Upload/update to Zilliz is a separate step and should not be assumed.
+
 ## Zilliz workflow
 
 After enrichment, create the Zilliz collection first, then upload records from `data/papers/enriched/` and `data/papers/missing/`.
@@ -135,8 +187,8 @@ Exported paper fields:
   "doi": "10....",
   "abstract": "",
   "keywords": [],
-  "citationCounts": null,
-  "fullpaper": false
+  "citation_count": null,
+  "full_paper": false
 }
 ```
 

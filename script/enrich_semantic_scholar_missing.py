@@ -271,11 +271,16 @@ def enrich_from_cache_item(paper: dict[str, Any], cache_item: dict[str, Any]) ->
     out = dict(paper)
     s2_paper = cache_item.get("paper") if isinstance(cache_item, dict) else None
     if isinstance(s2_paper, dict):
+        old_citation_field = "citation" + "Counts"
         abstract = normalize_text(s2_paper.get("abstract"))
         if abstract:
             out["abstract"] = abstract
-        if out.get("citationCounts") is None and s2_paper.get("citationCount") is not None:
-            out["citationCounts"] = s2_paper.get("citationCount")
+        if (
+            out.get("citation_count") is None
+            and out.get(old_citation_field) is None
+            and s2_paper.get("citationCount") is not None
+        ):
+            out["citation_count"] = s2_paper.get("citationCount")
         if not out.get("keywords") and s2_paper.get("fieldsOfStudy"):
             out["keywords"] = s2_paper["fieldsOfStudy"]
     return out

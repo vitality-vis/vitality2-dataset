@@ -10,6 +10,9 @@ data/dblp/dump/*.dtd
 !data/dblp/dump/.gitkeep
 
 # Generated data
+data/dblp/coverage-results.csv
+data/dblp/doi_coverage_check
+data/dblp/doi_extraction_audit
 data/dblp/split_source/
 data/papers/*
 data/zilliz/*
