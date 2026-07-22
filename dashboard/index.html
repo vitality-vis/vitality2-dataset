@@ -14,6 +14,7 @@
       --blue: #2563eb;
       --red: #dc2626;
       --amber: #d97706;
+      --yellow: #eab308;
       --green: #15803d;
       --purple: #7c3aed;
       --cyan: #0891b2;
@@ -33,7 +34,35 @@
       top: 0;
       z-index: 5;
     }
-    h1 { margin: 0 0 12px; font-size: 20px; font-weight: 650; }
+    h1 { margin: 0; font-size: 20px; font-weight: 650; }
+    .title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 12px;
+    }
+    nav {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    nav a {
+      height: 32px;
+      padding: 0 12px;
+      border-radius: 6px;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+    }
+    nav a:hover { color: var(--text); background: #f2f4f7; }
+    nav a.active {
+      color: var(--blue);
+      background: #eff6ff;
+    }
     h2 { margin: 0 0 14px; font-size: 16px; font-weight: 650; }
     h3 { margin: 10px 0 8px; font-size: 13px; font-weight: 650; color: var(--muted); }
     .section-header {
@@ -178,7 +207,13 @@
 </head>
 <body>
   <header id="pageHeader">
-    <h1>Vitality2 Paper Stats Dashboard</h1>
+    <div class="title-row">
+      <h1>Vitality2 Paper Stats Dashboard</h1>
+      <nav>
+        <a class="active" href="index.html">Overview</a>
+        <a href="coverage.html">Coverage</a>
+      </nav>
+    </div>
     <div class="controls" id="settingsRow">
       <label>Zilliz URI
         <input id="uri" placeholder="https://xxx.api.region.zillizcloud.com" />
@@ -201,22 +236,6 @@
     <section class="summary" id="summary"></section>
 
     <section>
-      <h2>Source / DBLP Source Composition</h2>
-      <div id="dblpChart" class="chart"></div>
-    </section>
-
-    <section>
-      <h2>Source Completeness</h2>
-      <div class="legend">
-        <span><i class="swatch" style="background: var(--amber)"></i> Missing DOI only</span>
-        <span><i class="swatch" style="background: var(--red)"></i> Missing abstract only</span>
-        <span><i class="swatch" style="background: var(--purple)"></i> Missing both</span>
-        <span><i class="swatch" style="background: var(--green)"></i> Complete</span>
-      </div>
-      <div id="qualityChart" class="chart"></div>
-    </section>
-
-    <section>
       <div class="section-header">
         <h2>Source / Year Heatmap</h2>
         <button id="exportHeatmapCsv" class="export-btn" disabled>Export CSV</button>
@@ -225,6 +244,11 @@
       <h3>Source year details</h3>
       <div id="sourceButtons" class="source-actions"></div>
       <div id="sourceYearChart" class="chart"></div>
+    </section>
+
+    <section>
+      <h2>Source / DBLP Source Composition</h2>
+      <div id="dblpChart" class="chart"></div>
     </section>
 
     <section>
@@ -391,62 +415,50 @@
       const complete = Number(row.complete_count || 0);
       const both = Math.max(0, missingDoi + missingAbs + complete - total);
       return {
-        doiOnly: Math.max(0, missingDoi - both),
-        absOnly: Math.max(0, missingAbs - both),
+        missingDoi,
+        missingAbs,
         both,
         complete
       };
     }
 
-    function renderQualityChart(rows) {
-      const width = 1200, left = 190, right = 100, rowH = 28, top = 18;
-      const height = top + rows.length * rowH + 28;
-      let svg = `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`;
-      rows.forEach((r, i) => {
-        const y = top + i * rowH;
-        const total = Math.max(1, Number(r.paper_count || 0));
-        const parts = completenessBreakdown(r);
-        const series = [
-          ["doiOnly", parts.doiOnly, "var(--amber)", "Missing DOI only"],
-          ["absOnly", parts.absOnly, "var(--red)", "Missing abstract only"],
-          ["both", parts.both, "var(--purple)", "Missing both"],
-          ["complete", parts.complete, "var(--green)", "Complete"]
-        ];
-        svg += `<text x="8" y="${y + 17}" class="bar-label">${esc(r.source)}</text>`;
-        let x = left;
-        series.forEach(([, value, color, label]) => {
-          const w = (value / total) * (width - left - right);
-          const tip = dataTip("Source completeness", [
-            ["Source", r.source],
-            ["Category", label],
-            ["Count", fmt(value)],
-            ["Total", fmt(total)],
-            ["Missing DOI", fmt(r.missing_doi_count)],
-            ["Missing abstract", fmt(r.missing_abstract_count)],
-            ["Complete", fmt(r.complete_count)]
-          ]);
-          if (w > 0) svg += `<rect class="mark" data-tip="${tip}" x="${x}" y="${y + 4}" width="${Math.max(1, w)}" height="16" fill="${color}"></rect>`;
-          x += w;
-        });
-        svg += `<text x="${width - right + 12}" y="${y + 17}" class="bar-label">${fmt(total)}</text>`;
-      });
-      svg += `</svg>`;
-      $("qualityChart").innerHTML = svg;
-      bindTooltips($("qualityChart"));
+    function pct(value, total) {
+      return total > 0 ? (value / total) * 100 : 0;
+    }
+    function pctLabel(value, total) {
+      return `${pct(value, total).toFixed(1)}%`;
     }
 
-    function renderHeatmap(rows) {
-      heatmapRows = rows;
-      $("exportHeatmapCsv").disabled = !rows.length;
-      const sources = [...new Set(rows.map(r => r.source))].sort();
-      const years = [...new Set(rows.map(r => Number(r.year)).filter(Boolean))].sort((a, b) => a - b);
-      const byKey = new Map(rows.map(r => [`${r.source}::${r.year}`, Number(r.paper_count || 0)]));
-      const maxCount = Math.max(1, ...rows.map(r => Number(r.paper_count || 0)));
-      const cell = 22, left = 190, top = 42, width = left + years.length * cell + 40, height = top + sources.length * cell + 32;
+    function renderHeatmap(yearRows, summaryRows) {
+      heatmapRows = yearRows;
+      $("exportHeatmapCsv").disabled = !yearRows.length;
+      const sources = [...new Set(yearRows.map(r => r.source))].sort();
+      const years = [...new Set(yearRows.map(r => Number(r.year)).filter(Boolean))].sort((a, b) => a - b);
+      const byKey = new Map(yearRows.map(r => [`${r.source}::${r.year}`, Number(r.paper_count || 0)]));
+      const summaryBySource = new Map(summaryRows.map(r => [r.source, r]));
+      const maxCount = Math.max(1, ...yearRows.map(r => Number(r.paper_count || 0)));
+      const qualityCols = [
+        { key: "missingDoi", label: "No DOI", tip: "Missing DOI", color: "var(--yellow)" },
+        { key: "missingAbs", label: "No Abs", tip: "Missing abstract", color: "var(--red)" },
+        { key: "both", label: "No DOI&Abs", tip: "Missing both", color: "var(--amber)" },
+        { key: "complete", label: "Complete", tip: "Complete", color: "var(--green)" }
+      ];
+      const cell = 22;
+      const left = Math.min(190, Math.max(88, Math.ceil(Math.max(...sources.map(s => String(s).length), 0) * 7.4) + 16));
+      const top = 56, gap = 36, totalW = 56, colW = 118, colPad = 4, pctW = 66;
+      const heatmapRight = left + years.length * cell;
+      const qualityLeft = heatmapRight + totalW + gap;
+      const width = qualityLeft + qualityCols.length * colW + 16;
+      const height = top + sources.length * cell + 32;
       let svg = `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`;
       years.forEach((year, j) => {
         const x = left + j * cell + 12;
-        svg += `<text x="${x}" y="34" transform="rotate(-60 ${x} 34)" font-size="10" fill="#667085">${year}</text>`;
+        svg += `<text x="${x}" y="48" transform="rotate(-60 ${x} 48)" font-size="10" fill="#667085">${year}</text>`;
+      });
+      svg += `<text x="${heatmapRight + 6}" y="36" font-size="10" text-anchor="start" fill="#667085">Total</text>`;
+      qualityCols.forEach((col, j) => {
+        const x = qualityLeft + j * colW + (colW - pctW - colPad) / 2;
+        svg += `<text x="${x}" y="36" font-size="10" text-anchor="middle" fill="#667085">${esc(col.label)}</text>`;
       });
       sources.forEach((src, i) => {
         const y = top + i * cell;
@@ -462,12 +474,38 @@
           ]);
           svg += `<rect class="mark" data-tip="${tip}" x="${left + j * cell}" y="${y}" width="19" height="19" fill="${color}"></rect>`;
         });
+
+        const summary = summaryBySource.get(src);
+        const total = Number(summary?.paper_count || 0);
+        const parts = summary ? completenessBreakdown(summary) : { missingDoi: 0, missingAbs: 0, both: 0, complete: 0 };
+        svg += `<text x="${heatmapRight + 6}" y="${y + 14}" font-size="11" text-anchor="start" class="bar-label">${fmt(total)}</text>`;
+        qualityCols.forEach((col, j) => {
+          const value = Number(parts[col.key] || 0);
+          const ratio = total > 0 ? value / total : 0;
+          const x0 = qualityLeft + j * colW;
+          const barMax = colW - colPad - pctW;
+          const barW = Math.max(ratio > 0 ? 1 : 0, ratio * barMax);
+          const tip = dataTip("Source completeness", [
+            ["Source", src],
+            ["Category", col.tip],
+            ["Count", fmt(value)],
+            ["Share", pctLabel(value, total)],
+            ["Total", fmt(total)]
+          ]);
+          svg += `<rect x="${x0}" y="${y}" width="${barMax}" height="19" fill="#f1f5f9" rx="2"></rect>`;
+          if (barW > 0) {
+            svg += `<rect class="mark" data-tip="${tip}" x="${x0}" y="${y}" width="${barW}" height="19" fill="${col.color}" rx="2"></rect>`;
+          } else {
+            svg += `<rect class="mark" data-tip="${tip}" x="${x0}" y="${y}" width="${barMax}" height="19" fill="transparent"></rect>`;
+          }
+          svg += `<text x="${x0 + barMax + 4}" y="${y + 14}" font-size="10" fill="#667085">${Math.round(ratio * 100)}% (${fmt(value)})</text>`;
+        });
       });
       svg += `</svg>`;
       $("heatmap").innerHTML = svg;
       bindTooltips($("heatmap"));
-      renderSourceButtons(sources, rows);
-      renderSourceYearChart(sources[0], rows);
+      renderSourceButtons(sources, yearRows);
+      renderSourceYearChart(sources[0], yearRows);
     }
 
     function renderSourceButtons(sources, rows) {
@@ -521,7 +559,7 @@
         <thead><tr><th>Source</th><th>DBLP Source</th><th>Total</th><th>Missing DOI</th><th>Missing Abstract</th><th>Missing Both</th><th>Complete</th></tr></thead>
         <tbody>${rows.map(r => {
           const b = completenessBreakdown(r);
-          return `<tr><td>${esc(r.source)}</td><td>${esc(r.dblp_source)}</td><td>${fmt(r.paper_count)}</td><td>${fmt(r.missing_doi_count)}</td><td>${fmt(r.missing_abstract_count)}</td><td>${fmt(b.both)}</td><td>${fmt(r.complete_count)}</td></tr>`;
+          return `<tr><td>${esc(r.source)}</td><td>${esc(r.dblp_source)}</td><td>${fmt(r.paper_count)}</td><td>${fmt(b.missingDoi)}</td><td>${fmt(b.missingAbs)}</td><td>${fmt(b.both)}</td><td>${fmt(r.complete_count)}</td></tr>`;
         }).join("")}</tbody></table>`;
     }
 
@@ -539,8 +577,7 @@
         const data = normalize(rows);
         renderSummary(data);
         renderDblpComposition(data.source_dblp_completeness);
-        renderQualityChart(data.source_summary);
-        renderHeatmap(data.source_year);
+        renderHeatmap(data.source_year, data.source_summary);
         renderDblpTable(data.source_dblp_completeness);
         $("status").textContent = `Loaded ${fmt(rows.length)} stats rows from ${collection}.`;
         $("pageHeader").classList.add("collapsed");

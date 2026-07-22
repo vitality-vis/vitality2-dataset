@@ -1,0 +1,916 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Coverage · Vitality2 Paper Stats</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --text: #18212f;
+      --muted: #667085;
+      --line: #d8dee8;
+      --blue: #2563eb;
+      --red: #dc2626;
+      --amber: #d97706;
+      --yellow: #eab308;
+      --green: #15803d;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    header {
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--line);
+      background: var(--panel);
+      position: sticky;
+      top: 0;
+      z-index: 5;
+    }
+    h1 { margin: 0; font-size: 20px; font-weight: 650; }
+    h2 { margin: 0 0 14px; font-size: 16px; font-weight: 650; }
+    h3 { margin: 0 0 8px; font-size: 13px; font-weight: 650; color: var(--muted); }
+    .title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 12px;
+    }
+    nav { display: flex; align-items: center; gap: 4px; }
+    nav a {
+      height: 32px;
+      padding: 0 12px;
+      border-radius: 6px;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+    }
+    nav a:hover { color: var(--text); background: #f2f4f7; }
+    nav a.active { color: var(--blue); background: #eff6ff; }
+    .controls {
+      display: grid;
+      grid-template-columns: minmax(240px, 1.2fr) minmax(240px, 1.4fr) 160px 120px;
+      gap: 10px;
+      align-items: end;
+    }
+    header.collapsed { padding-bottom: 12px; }
+    header.collapsed #settingsRow { display: none; }
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 28px;
+    }
+    .settings-toggle {
+      display: none;
+      height: 28px;
+      padding: 0 9px;
+      background: #fff;
+      color: var(--text);
+      border-color: var(--line);
+      font-size: 12px;
+      font-weight: 600;
+    }
+    header.collapsed .settings-toggle { display: inline-flex; align-items: center; }
+    label { display: grid; gap: 4px; color: var(--muted); font-size: 12px; }
+    input, select, button, .file-btn {
+      height: 36px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 0 10px;
+      background: #fff;
+      color: var(--text);
+      font: inherit;
+    }
+    button, .file-btn {
+      background: var(--blue);
+      color: #fff;
+      border-color: var(--blue);
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    button.secondary, .file-btn.secondary {
+      background: #fff;
+      color: var(--text);
+      border-color: var(--line);
+      font-weight: 500;
+    }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    main { padding: 20px 24px 36px; display: grid; gap: 18px; }
+    section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+      overflow: auto;
+    }
+    .muted { color: var(--muted); }
+    .status { min-height: 20px; color: var(--muted); }
+    .error { color: #b42318; }
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(120px, 1fr));
+      gap: 12px;
+    }
+    .metric {
+      background: #f9fafb;
+      border: 1px solid #e6e9ef;
+      border-radius: 8px;
+      padding: 12px;
+    }
+    .metric .value { font-size: 24px; font-weight: 700; margin-top: 2px; }
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: end;
+      margin-bottom: 12px;
+    }
+    .row:last-child { margin-bottom: 0; }
+    .grow { flex: 1 1 220px; }
+    .mapping-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 10px;
+    }
+    .preview-meta { margin-bottom: 10px; color: var(--muted); font-size: 13px; }
+    table { border-collapse: collapse; width: 100%; min-width: 720px; }
+    th, td {
+      border-bottom: 1px solid #edf0f4;
+      padding: 8px 10px;
+      text-align: left;
+      white-space: nowrap;
+      max-width: 280px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    th {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+      background: #fafbfc;
+      position: sticky;
+      top: 0;
+    }
+    td.wrap { white-space: normal; max-width: 360px; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      height: 22px;
+      padding: 0 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 650;
+      background: #f2f4f7;
+      color: var(--muted);
+    }
+    .badge.doi { background: #ecfdf3; color: var(--green); }
+    .badge.title { background: #eff6ff; color: var(--blue); }
+    .badge.candidate { background: #fffbeb; color: var(--amber); }
+    .badge.missing { background: #fef3f2; color: var(--red); }
+    .badge.mismatch { background: #fff7ed; color: #c2410c; margin-left: 6px; }
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .section-header h2 { margin: 0; }
+    .hidden { display: none !important; }
+    .progress {
+      height: 6px;
+      background: #eef1f5;
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 10px;
+    }
+    .progress > span {
+      display: block;
+      height: 100%;
+      width: 0;
+      background: var(--blue);
+      transition: width 120ms ease;
+    }
+    #fileInput { display: none; }
+    @media (max-width: 920px) {
+      .controls { grid-template-columns: 1fr; }
+      .summary { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header id="pageHeader">
+    <div class="title-row">
+      <h1>Vitality2 Paper Stats Dashboard</h1>
+      <nav>
+        <a href="index.html">Overview</a>
+        <a class="active" href="coverage.html">Coverage</a>
+      </nav>
+    </div>
+    <div class="controls" id="settingsRow">
+      <label>Zilliz URI
+        <input id="uri" placeholder="https://xxx.api.region.zillizcloud.com" />
+      </label>
+      <label>Zilliz Token
+        <input id="token" type="password" placeholder="Paste token here" />
+      </label>
+      <label>Paper collection
+        <input id="collection" value="paper_new" />
+      </label>
+      <button id="saveSettingsBtn" type="button" class="secondary">Save</button>
+    </div>
+    <div class="status-row">
+      <div id="status" class="status"></div>
+      <button id="settingsToggle" class="settings-toggle" type="button">Show settings</button>
+    </div>
+  </header>
+
+  <main>
+    <section>
+      <h2>Previous results</h2>
+      <div class="row">
+        <label class="grow">Saved run
+          <select id="savedRunSelect">
+            <option value="">Loading…</option>
+          </select>
+        </label>
+        <button id="loadSavedBtn" type="button">Load</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>1. Upload CSV</h2>
+      <div class="row">
+        <label class="file-btn secondary" for="fileInput">Choose CSV</label>
+        <input id="fileInput" type="file" accept=".csv,text/csv" />
+        <div id="fileName" class="muted">No file selected</div>
+      </div>
+    </section>
+
+    <section id="previewSection" class="hidden">
+      <h2>2. Parsed fields</h2>
+      <div id="previewMeta" class="preview-meta"></div>
+      <div style="overflow:auto; max-height: 260px;">
+        <table>
+          <thead id="previewHead"></thead>
+          <tbody id="previewBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="mappingSection" class="hidden">
+      <h2>3. Field mapping</h2>
+      <p class="muted" style="margin: 0 0 12px;">Map CSV columns to Zilliz fields. DOI and/or title are required for matching.</p>
+      <div class="mapping-grid" id="mappingGrid"></div>
+      <div class="row" style="margin-top: 14px;">
+        <label>Max rows
+          <input id="maxRows" type="number" min="1" value="200" style="width: 110px;" />
+        </label>
+        <button id="runBtn" type="button">Run coverage</button>
+      </div>
+      <div class="progress"><span id="progressBar"></span></div>
+    </section>
+
+    <section id="summarySection" class="hidden">
+      <h2>Summary</h2>
+      <div class="summary" id="summary"></div>
+    </section>
+
+    <section id="resultsSection" class="hidden">
+      <div class="section-header">
+        <h2>Results</h2>
+        <button id="exportBtn" type="button" class="secondary">Export CSV</button>
+      </div>
+      <div style="overflow:auto; max-height: 640px;">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Status</th>
+              <th>Similarity</th>
+              <th>CSV title</th>
+              <th>CSV DOI</th>
+              <th>CSV source</th>
+              <th>Match title</th>
+              <th>Match DOI</th>
+              <th>Match source</th>
+              <th>Year</th>
+            </tr>
+          </thead>
+          <tbody id="resultsBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const ZILLIZ_FIELDS = ["doi", "title", "year", "source", "dblp_source", "authors", "abstract"];
+    const OUTPUT_FIELDS = ["paper_uid", "doi", "title", "year", "source", "dblp_source", "authors", "abstract"];
+    const STATUS_RANK = { matched_doi: 0, matched_title: 1, candidate: 2, missing: 3 };
+    const CONCURRENCY = 4;
+
+    const $ = (id) => document.getElementById(id);
+    $("uri").value = localStorage.getItem("zilliz_uri") || "";
+    $("token").value = localStorage.getItem("zilliz_token") || "";
+    $("collection").value = localStorage.getItem("zilliz_paper_collection") || "paper_new";
+
+    let csvHeaders = [];
+    let csvRows = [];
+    let results = [];
+
+    function setStatus(msg, isError = false) {
+      $("status").className = isError ? "status error" : "status";
+      $("status").textContent = msg || "";
+    }
+
+    function fmt(n) { return Number(n || 0).toLocaleString(); }
+    function esc(s) {
+      return String(s ?? "").replace(/[&<>"']/g, (c) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      }[c]));
+    }
+    function escapeFilter(value) {
+      return String(value).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+    }
+    function normalizeDoi(value) {
+      if (!value) return "";
+      return String(value)
+        .trim()
+        .replace(/^https?:\/\/(dx\.)?doi\.org\//i, "")
+        .replace(/^doi:\s*/i, "")
+        .toLowerCase();
+    }
+    function normalizeTitle(value) {
+      if (!value) return "";
+      return String(value)
+        .toLowerCase()
+        .normalize("NFKD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9\s]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+    function normalizeSource(value) {
+      return String(value || "").trim().toLowerCase();
+    }
+    function tokens(value) {
+      return normalizeTitle(value).split(" ").filter(Boolean);
+    }
+    function jaccard(a, b) {
+      const aa = new Set(tokens(a));
+      const bb = new Set(tokens(b));
+      if (!aa.size && !bb.size) return 1;
+      if (!aa.size || !bb.size) return 0;
+      let inter = 0;
+      aa.forEach((t) => { if (bb.has(t)) inter += 1; });
+      return inter / (aa.size + bb.size - inter);
+    }
+    function authorsText(value) {
+      if (Array.isArray(value)) return value.filter(Boolean).join(", ");
+      if (value && typeof value === "object") {
+        return Object.values(value).flat().filter((v) => typeof v === "string").join(", ");
+      }
+      const text = String(value || "");
+      return text === "[object Object]" ? "" : text;
+    }
+    function guessMapping(headers) {
+      const lower = headers.map((h) => h.toLowerCase().trim());
+      const find = (...preds) => {
+        const i = lower.findIndex((h) => preds.some((p) => p(h)));
+        return i >= 0 ? headers[i] : "";
+      };
+      return {
+        doi: find((h) => h === "doi" || h.includes("doi")),
+        title: find((h) => h === "title" || h.includes("title") || h === "name"),
+        year: find((h) => h === "year" || h.includes("year")),
+        source: find((h) => h === "source" || h === "venue" || h.includes("conference") || h.includes("journal")),
+        dblp_source: find((h) => h.includes("dblp")),
+        authors: find((h) => h === "authors" || h === "author" || h.includes("author")),
+        abstract: find((h) => h === "abstract" || h.includes("abstract"))
+      };
+    }
+
+    function parseCsv(text) {
+      const rows = [];
+      let row = [];
+      let cell = "";
+      let i = 0;
+      let inQuotes = false;
+      const pushCell = () => { row.push(cell); cell = ""; };
+      const pushRow = () => {
+        if (row.length === 1 && row[0] === "" && rows.length === 0) {
+          row = [];
+          return;
+        }
+        rows.push(row);
+        row = [];
+      };
+      while (i < text.length) {
+        const ch = text[i];
+        if (inQuotes) {
+          if (ch === '"') {
+            if (text[i + 1] === '"') { cell += '"'; i += 2; continue; }
+            inQuotes = false; i += 1; continue;
+          }
+          cell += ch; i += 1; continue;
+        }
+        if (ch === '"') { inQuotes = true; i += 1; continue; }
+        if (ch === ",") { pushCell(); i += 1; continue; }
+        if (ch === "\n") { pushCell(); pushRow(); i += 1; continue; }
+        if (ch === "\r") { i += 1; continue; }
+        cell += ch; i += 1;
+      }
+      if (cell.length || row.length) { pushCell(); pushRow(); }
+      if (!rows.length) return { headers: [], rows: [] };
+      const headers = rows[0].map((h) => String(h || "").trim() || "column");
+      const uniq = {};
+      const uniqueHeaders = headers.map((h) => {
+        const base = h || "column";
+        uniq[base] = (uniq[base] || 0) + 1;
+        return uniq[base] === 1 ? base : `${base}_${uniq[base]}`;
+      });
+      const data = rows.slice(1).filter((r) => r.some((c) => String(c || "").trim())).map((r) => {
+        const obj = {};
+        uniqueHeaders.forEach((h, idx) => { obj[h] = r[idx] ?? ""; });
+        return obj;
+      });
+      return { headers: uniqueHeaders, rows: data };
+    }
+
+    function mappedPaper(row, mapping) {
+      const out = {};
+      ZILLIZ_FIELDS.forEach((field) => {
+        const col = mapping[field];
+        out[field] = col ? String(row[col] ?? "").trim() : "";
+      });
+      return out;
+    }
+
+    function computeSimilarity(csvPaper, hit) {
+      if (!hit) return 0;
+      const scores = [];
+      if (csvPaper.title && hit.title) scores.push(jaccard(csvPaper.title, hit.title));
+      if (csvPaper.doi && hit.doi) {
+        scores.push(normalizeDoi(csvPaper.doi) === normalizeDoi(hit.doi) ? 1 : 0);
+      }
+      if (csvPaper.year && hit.year != null && hit.year !== "") {
+        scores.push(String(csvPaper.year) === String(hit.year) ? 1 : 0);
+      }
+      if (csvPaper.source && hit.source) {
+        scores.push(normalizeSource(csvPaper.source) === normalizeSource(hit.source) ? 1 : 0);
+      }
+      if (csvPaper.authors && authorsText(hit.authors)) {
+        scores.push(jaccard(authorsText(csvPaper.authors), authorsText(hit.authors)));
+      }
+      if (!scores.length) return 0;
+      return scores.reduce((s, n) => s + n, 0) / scores.length;
+    }
+
+    function sourceMismatch(csvPaper, hit) {
+      if (!hit || !csvPaper.source || !hit.source) return false;
+      return normalizeSource(csvPaper.source) !== normalizeSource(hit.source);
+    }
+
+    async function zillizFetch(path, body) {
+      const uri = $("uri").value.trim().replace(/\/$/, "");
+      const token = $("token").value.trim();
+      if (!uri || !token) throw new Error("Set Zilliz URI and token first.");
+      const res = await fetch(`${uri}${path}`, {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer " + token,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(body)
+      });
+      const payload = await res.json();
+      if (!res.ok || payload.code !== 0) {
+        throw new Error(payload.message || res.statusText || "Zilliz request failed");
+      }
+      return payload;
+    }
+
+    async function queryExact(field, value) {
+      if (!value) return null;
+      const collection = $("collection").value.trim() || "paper_new";
+      const payload = await zillizFetch("/v2/vectordb/entities/query", {
+        collectionName: collection,
+        filter: `${field} == "${escapeFilter(value)}"`,
+        outputFields: OUTPUT_FIELDS,
+        limit: 5
+      });
+      const rows = payload.data || [];
+      return rows[0] || null;
+    }
+
+    async function queryByDoi(doi) {
+      const raw = String(doi || "").trim();
+      const norm = normalizeDoi(raw);
+      if (!raw && !norm) return null;
+      let hit = await queryExact("doi", raw);
+      if (hit) return hit;
+      if (norm && norm !== raw.toLowerCase() && norm !== raw) {
+        hit = await queryExact("doi", norm);
+        if (hit) return hit;
+      }
+      // fallback: scan a few common prefixes if stored with URL form
+      if (norm) {
+        hit = await queryExact("doi", `https://doi.org/${norm}`);
+        if (hit) return hit;
+      }
+      return null;
+    }
+
+    async function queryByTitleExact(title) {
+      const raw = String(title || "").trim();
+      if (!raw) return null;
+      return queryExact("title", raw);
+    }
+
+    async function searchSparseTitle(title) {
+      const raw = String(title || "").trim();
+      if (!raw) return null;
+      const collection = $("collection").value.trim() || "paper_new";
+      const payload = await zillizFetch("/v2/vectordb/entities/search", {
+        collectionName: collection,
+        data: [raw],
+        annsField: "search_sparse",
+        limit: 1,
+        outputFields: OUTPUT_FIELDS,
+        searchParams: { metricType: "BM25" }
+      });
+      const rows = (payload.data && payload.data[0]) || [];
+      const top = rows[0];
+      if (!top) return null;
+      // REST may nest entity fields under `entity` or flatten them
+      if (top.entity) return { ...top.entity, distance: top.distance, score: top.score };
+      return top;
+    }
+
+    async function matchOne(csvPaper) {
+      let hit = null;
+      let status = "missing";
+
+      if (csvPaper.doi) {
+        hit = await queryByDoi(csvPaper.doi);
+        if (hit) status = "matched_doi";
+      }
+
+      if (!hit && csvPaper.title) {
+        hit = await queryByTitleExact(csvPaper.title);
+        if (hit) {
+          status = "matched_title";
+        } else {
+          const fuzzy = await searchSparseTitle(csvPaper.title);
+          if (fuzzy) {
+            hit = fuzzy;
+            const sameTitle = normalizeTitle(csvPaper.title) === normalizeTitle(fuzzy.title);
+            status = sameTitle ? "matched_title" : "candidate";
+          }
+        }
+      }
+
+      const similarity = computeSimilarity(csvPaper, hit);
+      return {
+        csv: csvPaper,
+        hit,
+        status,
+        similarity,
+        source_mismatch: sourceMismatch(csvPaper, hit)
+      };
+    }
+
+    async function mapPool(items, limit, worker, onProgress) {
+      const out = new Array(items.length);
+      let next = 0;
+      let done = 0;
+      async function run() {
+        while (next < items.length) {
+          const idx = next++;
+          out[idx] = await worker(items[idx], idx);
+          done += 1;
+          onProgress?.(done, items.length);
+        }
+      }
+      await Promise.all(Array.from({ length: Math.min(limit, items.length) }, () => run()));
+      return out;
+    }
+
+    function currentMapping() {
+      const mapping = {};
+      ZILLIZ_FIELDS.forEach((field) => {
+        mapping[field] = ($(`map_${field}`) && $(`map_${field}`).value) || "";
+      });
+      return mapping;
+    }
+
+    function renderPreview() {
+      $("previewSection").classList.remove("hidden");
+      $("mappingSection").classList.remove("hidden");
+      $("previewMeta").textContent = `${fmt(csvRows.length)} rows · ${fmt(csvHeaders.length)} columns`;
+      $("previewHead").innerHTML = `<tr>${csvHeaders.map((h) => `<th>${esc(h)}</th>`).join("")}</tr>`;
+      $("previewBody").innerHTML = csvRows.slice(0, 8).map((row) => (
+        `<tr>${csvHeaders.map((h) => `<td title="${esc(row[h])}">${esc(row[h])}</td>`).join("")}</tr>`
+      )).join("");
+
+      const guessed = guessMapping(csvHeaders);
+      $("mappingGrid").innerHTML = ZILLIZ_FIELDS.map((field) => {
+        const options = [`<option value="">—</option>`]
+          .concat(csvHeaders.map((h) => {
+            const selected = guessed[field] === h ? " selected" : "";
+            return `<option value="${esc(h)}"${selected}>${esc(h)}</option>`;
+          }))
+          .join("");
+        return `<label>${esc(field)}<select id="map_${field}">${options}</select></label>`;
+      }).join("");
+    }
+
+    function renderSummary(items) {
+      const total = items.length;
+      const matched = items.filter((r) => r.status === "matched_doi" || r.status === "matched_title").length;
+      const candidate = items.filter((r) => r.status === "candidate").length;
+      const missing = items.filter((r) => r.status === "missing").length;
+      const mismatch = items.filter((r) => r.source_mismatch).length;
+      $("summarySection").classList.remove("hidden");
+      $("summary").innerHTML = [
+        ["Rows", total],
+        ["Matched", matched],
+        ["Candidate", candidate],
+        ["Missing", missing],
+        ["Source mismatch", mismatch]
+      ].map(([label, value]) => (
+        `<div class="metric"><div class="muted">${label}</div><div class="value">${fmt(value)}</div></div>`
+      )).join("");
+    }
+
+    function statusBadge(row) {
+      const label = {
+        matched_doi: "DOI",
+        matched_title: "Title",
+        candidate: "Candidate",
+        missing: "Missing"
+      }[row.status] || row.status;
+      const cls = {
+        matched_doi: "doi",
+        matched_title: "title",
+        candidate: "candidate",
+        missing: "missing"
+      }[row.status] || "";
+      const mismatch = row.source_mismatch ? `<span class="badge mismatch">source≠</span>` : "";
+      return `<span class="badge ${cls}">${label}</span>${mismatch}`;
+    }
+
+    function renderResults(items) {
+      const sorted = [...items].sort((a, b) => {
+        const mismatchDelta = Number(b.source_mismatch) - Number(a.source_mismatch);
+        if (mismatchDelta) return mismatchDelta;
+        const rank = (STATUS_RANK[a.status] ?? 9) - (STATUS_RANK[b.status] ?? 9);
+        if (rank) return rank;
+        return (b.similarity || 0) - (a.similarity || 0);
+      });
+      results = sorted;
+      $("resultsSection").classList.remove("hidden");
+      $("resultsBody").innerHTML = sorted.map((r, i) => {
+        const hit = r.hit || {};
+        return `<tr>
+          <td>${i + 1}</td>
+          <td>${statusBadge(r)}</td>
+          <td>${(r.similarity * 100).toFixed(0)}%</td>
+          <td class="wrap" title="${esc(r.csv.title)}">${esc(r.csv.title || "—")}</td>
+          <td title="${esc(r.csv.doi)}">${esc(r.csv.doi || "—")}</td>
+          <td>${esc(r.csv.source || "—")}</td>
+          <td class="wrap" title="${esc(hit.title)}">${esc(hit.title || "—")}</td>
+          <td title="${esc(hit.doi)}">${esc(hit.doi || "—")}</td>
+          <td>${esc(hit.source || "—")}</td>
+          <td>${esc((hit.year ?? r.csv.year) || "—")}</td>
+        </tr>`;
+      }).join("");
+    }
+
+    function isResultsCsv(headers) {
+      const set = new Set(headers.map((h) => h.toLowerCase()));
+      return set.has("status") && set.has("similarity") && set.has("csv_title");
+    }
+
+    function parseSimilarity(value) {
+      const n = Number(value);
+      if (!Number.isFinite(n)) return 0;
+      return n > 1 ? n / 100 : n;
+    }
+
+    function blankToEmpty(value) {
+      const text = String(value ?? "").trim();
+      return !text || text === "—" || text === "[object Object]" ? "" : text;
+    }
+
+    function rowsToCoverageResults(rows) {
+      return rows.map((row) => {
+        const csv = {
+          title: blankToEmpty(row.csv_title),
+          doi: blankToEmpty(row.csv_doi),
+          source: blankToEmpty(row.csv_source),
+          year: blankToEmpty(row.csv_year),
+          authors: blankToEmpty(row.csv_authors),
+          abstract: "",
+          dblp_source: ""
+        };
+        const hitTitle = blankToEmpty(row.match_title);
+        const hitDoi = blankToEmpty(row.match_doi);
+        const paperUid = blankToEmpty(row.paper_uid);
+        const hasHit = Boolean(hitTitle || hitDoi || paperUid);
+        const hit = hasHit ? {
+          title: hitTitle,
+          doi: hitDoi,
+          source: blankToEmpty(row.match_source),
+          year: blankToEmpty(row.match_year),
+          authors: blankToEmpty(row.match_authors),
+          paper_uid: paperUid
+        } : null;
+        const mismatchRaw = String(row.source_mismatch || "").trim().toLowerCase();
+        return {
+          status: blankToEmpty(row.status) || (hasHit ? "candidate" : "missing"),
+          source_mismatch: mismatchRaw === "yes" || mismatchRaw === "true" || mismatchRaw === "1",
+          similarity: parseSimilarity(row.similarity),
+          csv,
+          hit
+        };
+      });
+    }
+
+    function applyLoadedResults(items, label) {
+      results = items;
+      renderSummary(items);
+      renderResults(items);
+      setStatus(`Loaded ${fmt(items.length)} previous results${label ? ` · ${label}` : ""}.`);
+    }
+
+    async function loadResultsText(text, label) {
+      const parsed = parseCsv(text);
+      if (!parsed.headers.length || !parsed.rows.length) {
+        throw new Error("Results CSV has no data rows.");
+      }
+      if (!isResultsCsv(parsed.headers)) {
+        throw new Error("Not a coverage results CSV (need status, similarity, csv_title).");
+      }
+      applyLoadedResults(rowsToCoverageResults(parsed.rows), label);
+    }
+
+    async function refreshSavedRuns() {
+      const select = $("savedRunSelect");
+      select.innerHTML = `<option value="">No saved runs</option>`;
+      try {
+        const res = await fetch("coverage-tests/index.json", { cache: "no-store" });
+        if (!res.ok) throw new Error("missing index");
+        const files = await res.json();
+        const list = Array.isArray(files) ? files : (files.files || []);
+        if (!list.length) return;
+        select.innerHTML = list.map((name) => (
+          `<option value="${esc(name)}">${esc(name)}</option>`
+        )).join("");
+      } catch {
+        select.innerHTML = `<option value="vispubs.csv">vispubs.csv</option>`;
+      }
+    }
+
+    async function loadSavedRun(name = $("savedRunSelect").value.trim()) {
+      if (!name) {
+        setStatus("No saved run selected.", true);
+        return;
+      }
+      try {
+        setStatus(`Loading ${name}...`);
+        const res = await fetch(`coverage-tests/outputs/${encodeURIComponent(name)}`, { cache: "no-store" });
+        if (!res.ok) throw new Error(`Could not fetch coverage-tests/outputs/${name}`);
+        await loadResultsText(await res.text(), name);
+        $("savedRunSelect").value = name;
+      } catch (err) {
+        setStatus(err.message || String(err), true);
+      }
+    }
+
+    function exportResults() {
+      if (!results.length) return;
+      const header = [
+        "status", "source_mismatch", "similarity",
+        "csv_title", "csv_doi", "csv_source", "csv_year", "csv_authors",
+        "match_title", "match_doi", "match_source", "match_year", "match_authors", "paper_uid"
+      ];
+      const lines = [header.join(",")];
+      const cell = (v) => {
+        const text = String(v ?? "");
+        return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+      };
+      results.forEach((r) => {
+        const hit = r.hit || {};
+        lines.push([
+          r.status,
+          r.source_mismatch ? "yes" : "no",
+          (r.similarity * 100).toFixed(1),
+          r.csv.title, r.csv.doi, r.csv.source, r.csv.year, r.csv.authors,
+          hit.title, hit.doi, hit.source, hit.year, authorsText(hit.authors), hit.paper_uid
+        ].map(cell).join(","));
+      });
+      const blob = new Blob([lines.join("\n") + "\n"], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "coverage-results.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function saveSettings() {
+      localStorage.setItem("zilliz_uri", $("uri").value.trim());
+      localStorage.setItem("zilliz_token", $("token").value.trim());
+      localStorage.setItem("zilliz_paper_collection", $("collection").value.trim() || "paper_new");
+      setStatus("Settings saved.");
+      $("pageHeader").classList.add("collapsed");
+      $("settingsToggle").textContent = "Show settings";
+    }
+
+    async function onFile(file) {
+      if (!file) return;
+      $("fileName").textContent = file.name;
+      setStatus("Parsing CSV...");
+      const text = await file.text();
+      const parsed = parseCsv(text);
+      if (!parsed.headers.length || !parsed.rows.length) {
+        setStatus("CSV has no data rows.", true);
+        return;
+      }
+      csvHeaders = parsed.headers;
+      csvRows = parsed.rows;
+      results = [];
+      $("summarySection").classList.add("hidden");
+      $("resultsSection").classList.add("hidden");
+      renderPreview();
+      setStatus(`Loaded ${fmt(csvRows.length)} rows.`);
+    }
+
+    async function runCoverage() {
+      const mapping = currentMapping();
+      if (!mapping.doi && !mapping.title) {
+        setStatus("Map at least DOI or title.", true);
+        return;
+      }
+      if (!$("uri").value.trim() || !$("token").value.trim()) {
+        setStatus("Set Zilliz URI and token first.", true);
+        $("pageHeader").classList.remove("collapsed");
+        return;
+      }
+
+      const maxRows = Math.max(1, Number($("maxRows").value || csvRows.length));
+      const slice = csvRows.slice(0, maxRows);
+      const papers = slice.map((row) => mappedPaper(row, mapping));
+      $("runBtn").disabled = true;
+      $("progressBar").style.width = "0%";
+      setStatus(`Matching 0 / ${fmt(papers.length)}...`);
+
+      try {
+        const matched = await mapPool(papers, CONCURRENCY, (paper) => matchOne(paper), (done, total) => {
+          $("progressBar").style.width = `${(done / total) * 100}%`;
+          setStatus(`Matching ${fmt(done)} / ${fmt(total)}...`);
+        });
+        renderSummary(matched);
+        renderResults(matched);
+        setStatus(`Done. ${fmt(matched.length)} rows checked.`);
+        $("pageHeader").classList.add("collapsed");
+        $("settingsToggle").textContent = "Show settings";
+      } catch (err) {
+        setStatus(err.message || String(err), true);
+        $("pageHeader").classList.remove("collapsed");
+      } finally {
+        $("runBtn").disabled = false;
+      }
+    }
+
+    $("fileInput").addEventListener("change", (e) => onFile(e.target.files?.[0]));
+    $("loadSavedBtn").addEventListener("click", () => loadSavedRun());
+    $("runBtn").addEventListener("click", runCoverage);
+    $("exportBtn").addEventListener("click", exportResults);
+    $("saveSettingsBtn").addEventListener("click", saveSettings);
+    $("settingsToggle").addEventListener("click", () => {
+      const collapsed = $("pageHeader").classList.toggle("collapsed");
+      $("settingsToggle").textContent = collapsed ? "Show settings" : "Hide settings";
+    });
+    refreshSavedRuns();
+    if ($("uri").value && $("token").value) {
+      $("pageHeader").classList.add("collapsed");
+      $("settingsToggle").textContent = "Show settings";
+    }
+  </script>
+</body>
+</html>
