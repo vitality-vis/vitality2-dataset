@@ -5,6 +5,7 @@ CHI,CHI Conference Companion,no
 CHI,CHI 95 Conference Companion,no
 CHI,CHI (2),yes
 CHI,CHI (1),yes
+CHI,INTERCHI,yes
 TVCG,IEEE Trans. Vis. Comput. Graph.,yes
 VIS,IEEE Visualization,yes
 VIS,IEEE VIS (Short Papers),no
@@ -13,6 +14,7 @@ EuroVis,EuroVis (Short Papers),no
 EuroVis,EuroVis,yes
 EuroVis,EuroVis (STARs),yes
 EuroVis,EuroVAST@EuroVis,no
+EuroVis,VisSym,yes
 PacificVis,PacificVis,yes
 IUI,IUI,yes
 IUI,IUI Companion,no
