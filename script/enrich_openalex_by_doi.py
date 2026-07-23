@@ -279,9 +279,9 @@ def configure_openalex(args: argparse.Namespace) -> OpenAlexClientConfig:
 
     api_key = args.api_key
     if not api_key and args.use_env_api_key:
-        api_key = os.environ.get("OPENALEX_API_KEY", "")
+        api_key = os.environ.get("OPENALEX_API_KEY1", "")
     if not api_key and args.use_env_api_key:
-        api_key = load_dotenv_key(args.env_file, "OPENALEX_API_KEY")
+        api_key = load_dotenv_key(args.env_file, "OPENALEX_API_KEY1")
     auth_mode = "api_key" if api_key else "anonymous"
     return OpenAlexClientConfig(
         api_key=api_key,

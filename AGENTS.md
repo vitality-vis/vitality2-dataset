@@ -52,6 +52,7 @@ Scripts:
 - `script/export_zilliz_paper_uids.py`: reads existing scalar values such as `dblp_key` or `paper_uid` from Zilliz and writes a local file.
 - `script/filter_new_dblp_papers.py`: filters split DBLP papers against the local DBLP key file and writes an update batch under `data/papers/updateYYYYMMDD/`.
 - `script/enrich_openalex_by_doi.py`: uses OpenAlex by DOI to enrich abstract, keywords, and citation count, writing results under `data/papers/`.
+- `script/enrich_openalex_missing_doi_by_search.py`: searches OpenAlex by title for records in `data/papers/missing/_missing_doi.json` and recovers DOI, abstract, keywords, and citation count when the match is confident.
 - `script/enrich_semantic_scholar_missing.py`: uses Semantic Scholar to fill records still missing abstracts after OpenAlex.
 - `script/enrich_crossref_missing.py`: uses Crossref to fill remaining records still missing abstracts after the previous enrichment steps.
 - `script/create_zilliz_collection.py`: creates the Zilliz collection schema.
@@ -71,6 +72,7 @@ Scripts:
 - `script/export_zilliz_paper_uids.py`: `--collection`, `--field`, `--output`, `--batch-size`, `--query-timeout`, `--limit`, `--load`.
 - `script/filter_new_dblp_papers.py`: `--split-dir`, `--existing-file`, `--field`, `--uid-file`, `--output-dir`, `--overwrite`, `--limit`.
 - `script/enrich_openalex_by_doi.py`: `--input-dir`, `--output-dir`, `--cache`, `--env-file`, `--api-key`, `--use-env-api-key`, `--email`, `--source`, `--limit`, `--sleep`, `--workers`, `--max-pending`, `--request-timeout`, `--progress-every`, `--max-retries`, `--retry-backoff`, `--overwrite`.
+- `script/enrich_openalex_missing_doi_by_search.py`: `--papers-dir`, `--cache`, `--env-file`, `--api-key`, `--use-env-api-key`, `--mailto`, `--source`, `--limit`, `--per-page`, `--year-window`, `--sleep`, `--request-timeout`, `--max-retries`, `--retry-backoff`, `--progress-every`, `--checkpoint-every`, `--dry-run`.
 - `script/enrich_semantic_scholar_missing.py`: `--papers-dir`, `--cache`, `--env-file`, `--api-key`, `--use-env-api-key`, `--use-empty-api-key-header`, `--source`, `--batch-size`, `--request-timeout`, `--max-retries`, `--retry-backoff`, `--rate-limit-retry-sleep`, `--sleep`, `--progress-every`.
 - `script/enrich_crossref_missing.py`: `--papers-dir`, `--cache`, `--env-file`, `--mailto`, `--use-env-mailto`, `--source`, `--request-timeout`, `--max-retries`, `--retry-backoff`, `--rate-limit-retry-sleep`, `--workers`, `--max-pending`, `--rate-limit`, `--sleep`, `--progress-every`.
 - `script/report/data_report.py`: `--input-dir`, `--papers-dir`, `--output-dir`.
@@ -90,6 +92,7 @@ python3 script/split_dblp_by_source.py --overwrite
 python3 script/export_zilliz_paper_uids.py --field dblp_key
 python3 script/filter_new_dblp_papers.py
 python3 script/enrich_openalex_by_doi.py --overwrite
+python3 script/enrich_openalex_missing_doi_by_search.py --dry-run
 python3 script/enrich_semantic_scholar_missing.py
 python3 script/enrich_crossref_missing.py
 python3 script/report/data_report.py
