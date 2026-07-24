@@ -139,7 +139,7 @@
     }
     .summary {
       display: grid;
-      grid-template-columns: repeat(4, minmax(160px, 1fr));
+      grid-template-columns: repeat(5, minmax(150px, 1fr));
       gap: 12px;
     }
     .metric {
@@ -149,6 +149,7 @@
       padding: 12px;
     }
     .metric .value { font-size: 24px; font-weight: 700; margin-top: 2px; }
+    .metric .percent { color: var(--muted); font-size: 12px; margin-top: 2px; }
     .muted { color: var(--muted); }
     .status { min-height: 20px; color: var(--muted); }
     .chart { width: 100%; overflow: auto; }
@@ -368,11 +369,12 @@
       const missingAbs = data.source_summary.reduce((s, r) => s + Number(r.missing_abstract_count || 0), 0);
       const complete = data.source_summary.reduce((s, r) => s + Number(r.complete_count || 0), 0);
       $("summary").innerHTML = [
-        ["Papers", total],
-        ["Sources", data.source_summary.length],
-        ["Missing DOI", missingDoi],
-        ["Complete", complete]
-      ].map(([label, value]) => `<div class="metric"><div class="muted">${label}</div><div class="value">${fmt(value)}</div></div>`).join("");
+        renderMetric("Papers", total, pctLabel(total, total)),
+        renderMetric("Sources", data.source_summary.length),
+        renderMetric("Missing DOI", missingDoi, pctLabel(missingDoi, total)),
+        renderMetric("Missing Abstract", missingAbs, pctLabel(missingAbs, total)),
+        renderMetric("Complete", complete, pctLabel(complete, total))
+      ].join("");
     }
 
     function renderDblpComposition(rows) {
@@ -427,6 +429,10 @@
     }
     function pctLabel(value, total) {
       return `${pct(value, total).toFixed(1)}%`;
+    }
+    function renderMetric(label, value, percent) {
+      const percentHtml = percent == null ? "" : `<div class="percent">${esc(percent)}</div>`;
+      return `<div class="metric"><div class="muted">${esc(label)}</div><div class="value">${fmt(value)}</div>${percentHtml}</div>`;
     }
 
     function renderHeatmap(yearRows, summaryRows) {
