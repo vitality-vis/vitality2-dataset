@@ -32,11 +32,11 @@ RUN_STATS="${RUN_STATS:-1}"
 RUN_SECOND_PASS_AFTER_MISSING_DOI="${RUN_SECOND_PASS_AFTER_MISSING_DOI:-1}"
 
 SPLIT_MAX_OPEN_FILES="${SPLIT_MAX_OPEN_FILES:-128}"
-DBLP_DOWNLOAD_WORKERS="${DBLP_DOWNLOAD_WORKERS:-8}"
-DBLP_SEGMENT_SIZE_MB="${DBLP_SEGMENT_SIZE_MB:-64}"
+DBLP_DOWNLOAD_WORKERS="${DBLP_DOWNLOAD_WORKERS:-16}"
+DBLP_SEGMENT_SIZE_MB="${DBLP_SEGMENT_SIZE_MB:-32}"
 ZILLIZ_EXPORT_BATCH_SIZE="${ZILLIZ_EXPORT_BATCH_SIZE:-5000}"
 UPLOAD_BATCH_SIZE="${UPLOAD_BATCH_SIZE:-500}"
-STATS_READ_BATCH_SIZE="${STATS_READ_BATCH_SIZE:-200}"
+STATS_READ_BATCH_SIZE="${STATS_READ_BATCH_SIZE:-5000}"
 STATS_WRITE_BATCH_SIZE="${STATS_WRITE_BATCH_SIZE:-500}"
 
 OPENALEX_WORKERS="${OPENALEX_WORKERS:-16}"
@@ -50,11 +50,6 @@ S2_SLEEP="${S2_SLEEP:-1}"
 CROSSREF_WORKERS="${CROSSREF_WORKERS:-1}"
 CROSSREF_MAX_PENDING="${CROSSREF_MAX_PENDING:-16}"
 CROSSREF_RATE_LIMIT="${CROSSREF_RATE_LIMIT:-5}"
-
-LIMIT_ARG=()
-if [[ -n "${LIMIT:-}" ]]; then
-  LIMIT_ARG=(--limit "$LIMIT")
-fi
 
 log() {
   printf '\n[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*"
@@ -120,12 +115,20 @@ if [[ "$EXPORT_DBLP_KEYS" == "1" ]]; then
 fi
 
 if [[ "$FILTER_NEW" == "1" ]]; then
-  run "$PYTHON_BIN" script/filter_new_dblp_papers.py \
-    --existing-file "$DBLP_KEY_FILE" \
-    --field dblp_key \
-    --output-dir "$UPDATE_DIR" \
-    --overwrite \
-    "${LIMIT_ARG[@]}"
+  if [[ -n "${LIMIT:-}" ]]; then
+    run "$PYTHON_BIN" script/filter_new_dblp_papers.py \
+      --existing-file "$DBLP_KEY_FILE" \
+      --field dblp_key \
+      --output-dir "$UPDATE_DIR" \
+      --overwrite \
+      --limit "$LIMIT"
+  else
+    run "$PYTHON_BIN" script/filter_new_dblp_papers.py \
+      --existing-file "$DBLP_KEY_FILE" \
+      --field dblp_key \
+      --output-dir "$UPDATE_DIR" \
+      --overwrite
+  fi
 fi
 
 NEW_PAPERS="$(json_number "$UPDATE_DIR/filter_manifest.json" new_papers)"
@@ -138,6 +141,8 @@ if [[ "$NEW_PAPERS" -eq 0 ]]; then
 fi
 
 if [[ "$RUN_ENRICH" == "1" ]]; then
+  MISSING_DOI_SEARCH_RAN=0
+
   run "$PYTHON_BIN" script/enrich_openalex_by_doi.py \
     --input-dir "$UPDATE_DIR/split_source" \
     --output-dir "$UPDATE_DIR" \
@@ -171,6 +176,7 @@ if [[ "$RUN_ENRICH" == "1" ]]; then
   fi
 
   if has_missing_doi_file; then
+    MISSING_DOI_SEARCH_RAN=1
     run "$PYTHON_BIN" script/enrich_openalex_missing_doi_by_search.py \
       --papers-dir "$UPDATE_DIR" \
       --cache "$UPDATE_DIR/cache/openalex_missing_doi_search_cache.jsonl" \
@@ -180,7 +186,7 @@ if [[ "$RUN_ENRICH" == "1" ]]; then
     log "No _missing_doi.json records for OpenAlex title search."
   fi
 
-  if [[ "$RUN_SECOND_PASS_AFTER_MISSING_DOI" == "1" ]] && has_non_missing_doi_missing_files; then
+  if [[ "$RUN_SECOND_PASS_AFTER_MISSING_DOI" == "1" ]] && [[ "$MISSING_DOI_SEARCH_RAN" == "1" ]] && has_non_missing_doi_missing_files; then
     log "Running a second DOI-based enrichment pass for DOI values recovered by OpenAlex title search."
     run "$PYTHON_BIN" script/enrich_semantic_scholar_missing.py \
       --papers-dir "$UPDATE_DIR" \

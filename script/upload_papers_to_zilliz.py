@@ -192,15 +192,17 @@ def build_search_text(record: dict[str, Any]) -> str | None:
 
 
 def to_entity(record: dict[str, Any]) -> dict[str, Any]:
+    doi = clean_str(record.get("doi"), 512, nullable=True)
+    abstract = clean_str(record.get("abstract"), 65535, nullable=True)
     return {
         "paper_uid": build_paper_uid(record),
         "dblp_key": clean_str(record.get("dblp_key"), 1024, nullable=True),
-        "doi": clean_str(record.get("doi"), 512, nullable=True),
+        "doi": doi,
         "embedding": None,
         "umap": None,
         "search_text": build_search_text(record),
         "title": clean_str(record.get("title"), 4096),
-        "abstract": clean_str(record.get("abstract"), 65535, nullable=True),
+        "abstract": abstract,
         "authors": clean_str_list(record.get("authors")),
         "keywords": clean_str_list(record.get("keywords"), nullable=True),
         "source": clean_str(record.get("source"), 1024),
@@ -211,6 +213,8 @@ def to_entity(record: dict[str, Any]) -> dict[str, Any]:
             nullable=True,
         ),
         "full_paper": clean_bool(get_first_present(record, "full_paper", LEGACY_FULL_PAPER_FIELD)),
+        "has_doi": bool(doi),
+        "has_abstract": bool(abstract),
     }
 
 
@@ -258,6 +262,10 @@ def validate_schema(collection) -> None:
         raise SystemExit("Collection field 'paper_uid' must be the primary key.")
     if getattr(paper_uid_field, "auto_id", False):
         raise SystemExit("Collection field 'paper_uid' must not use auto_id.")
+    if not getattr(collection.schema, "enable_dynamic_field", False):
+        raise SystemExit(
+            "Collection must enable dynamic fields so has_doi and has_abstract can be stored."
+        )
 
 
 def insert_batch(collection, batch: list[dict[str, Any]]) -> int:

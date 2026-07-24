@@ -14,6 +14,7 @@ import json
 import re
 import shutil
 import sys
+import time
 import xml.sax
 from collections import OrderedDict
 from dataclasses import dataclass
@@ -45,7 +46,7 @@ def first(values: list[str]) -> str:
 
 
 def normalize_text(value: str) -> str:
-    return re.sub(r"\s+", " ", value).strip()
+    return " ".join(value.split())
 
 
 def extract_doi(ees: list[str]) -> str:
@@ -225,11 +226,18 @@ class DblpHandler(xml.sax.handler.ContentHandler):
         writer: SourceJsonWriter,
         source_mapping: dict[str, SourceMappingEntry],
         limit: int | None = None,
+        progress_every: int = 1000,
+        dynamic_progress: bool = True,
     ) -> None:
         super().__init__()
         self.writer = writer
         self.source_mapping = source_mapping
         self.limit = limit
+        self.progress_every = progress_every
+        self.dynamic_progress = dynamic_progress
+        self.started_at = time.monotonic()
+        self.last_progress_len = 0
+        self.last_progress_exported: int | None = None
         self.current_record_type: str | None = None
         self.current_field: str | None = None
         self.current_chars: list[str] = []
@@ -248,7 +256,7 @@ class DblpHandler(xml.sax.handler.ContentHandler):
         if name in RECORD_TAGS:
             self.current_record_type = name
             self.source_field = SOURCE_FIELDS[name]
-            self.dblp_key = normalize_text(attrs.get("key", ""))
+            self.dblp_key = attrs.get("key", "").strip()
             self.title = ""
             self.authors = []
             self.dblp_source = ""
@@ -266,14 +274,14 @@ class DblpHandler(xml.sax.handler.ContentHandler):
 
     def endElement(self, name: str) -> None:
         if self.current_record_type and name == self.current_field:
-            value = normalize_text("".join(self.current_chars))
-            if value:
-                if name == "author":
+            value = "".join(self.current_chars)
+            if value.strip():
+                if name == self.source_field and not self.dblp_source:
+                    self.dblp_source = normalize_text(value)
+                elif name == "author":
                     self.authors.append(value)
                 elif name == "title" and not self.title:
                     self.title = value
-                elif name == self.source_field and not self.dblp_source:
-                    self.dblp_source = value
                 elif name == "year" and not self.year:
                     self.year = value
                 elif name == "ee":
@@ -291,6 +299,7 @@ class DblpHandler(xml.sax.handler.ContentHandler):
                 paper = self._build_paper(mapping_entry)
                 self.writer.write(mapping_entry.source, paper)
                 self.exported += 1
+                self.print_progress()
             self.current_record_type = None
             self.current_field = None
             self.source_field = None
@@ -299,28 +308,61 @@ class DblpHandler(xml.sax.handler.ContentHandler):
                 raise StopParsing()
 
     def _build_paper(self, mapping_entry: SourceMappingEntry) -> dict[str, object]:
+        title = normalize_text(self.title)
+        authors = [author for raw_author in self.authors if (author := normalize_text(raw_author))]
+        year = normalize_text(self.year)
         doi = extract_doi(self.ees)
         return {
             "paper_uid": paper_uid(
                 doi=doi,
                 dblp_key=self.dblp_key,
-                title=self.title,
-                authors=self.authors,
-                year=self.year,
+                title=title,
+                authors=authors,
+                year=year,
                 dblp_source=self.dblp_source,
             ),
             "dblp_key": self.dblp_key,
-            "title": self.title,
-            "authors": self.authors,
+            "title": title,
+            "authors": authors,
             "source": mapping_entry.source,
             "dblp_source": self.dblp_source,
-            "year": self.year,
+            "year": year,
             "doi": doi,
             "abstract": "",
             "keywords": [],
             "citation_count": None,
             "full_paper": mapping_entry.full_paper,
         }
+
+    def print_progress(self, *, final: bool = False) -> None:
+        if self.progress_every <= 0:
+            return
+        if not final and self.exported % self.progress_every != 0:
+            return
+        if final and self.last_progress_exported == self.exported:
+            if self.dynamic_progress:
+                print(file=sys.stderr)
+            return
+
+        elapsed = max(time.monotonic() - self.started_at, 0.001)
+        rate = self.seen_target_records / elapsed
+        message = (
+            f"exported={self.exported:,} "
+            f"seen={self.seen_target_records:,} "
+            f"skipped_unmapped={self.skipped_unmapped:,} "
+            f"rate={rate:,.0f} records/s "
+            f"elapsed={elapsed:,.1f}s"
+        )
+        if self.dynamic_progress:
+            padding = " " * max(self.last_progress_len - len(message), 0)
+            print(f"\r{message}{padding}", end="", file=sys.stderr, flush=True)
+            self.last_progress_len = len(message)
+        else:
+            print(message, file=sys.stderr, flush=True)
+        self.last_progress_exported = self.exported
+
+        if final and self.dynamic_progress:
+            print(file=sys.stderr)
 
 
 class StopParsing(Exception):
@@ -366,6 +408,17 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Optional limit for testing; stops after exporting this many records.",
     )
+    parser.add_argument(
+        "--progress-every",
+        type=int,
+        default=1000,
+        help="Refresh split progress after this many exported papers. Use 0 to disable.",
+    )
+    parser.add_argument(
+        "--no-dynamic-progress",
+        action="store_true",
+        help="Print each progress update on a new line instead of refreshing one terminal line.",
+    )
     return parser.parse_args()
 
 
@@ -388,7 +441,13 @@ def main() -> int:
     prepare_output_dir(args.output_dir, args.overwrite)
 
     writer = SourceJsonWriter(args.output_dir, args.max_open_files)
-    handler = DblpHandler(writer, source_mapping, limit=args.limit)
+    handler = DblpHandler(
+        writer,
+        source_mapping,
+        limit=args.limit,
+        progress_every=args.progress_every,
+        dynamic_progress=not args.no_dynamic_progress,
+    )
     parser = xml.sax.make_parser()
     parser.setContentHandler(handler)
 
@@ -397,6 +456,7 @@ def main() -> int:
     except StopParsing:
         pass
     finally:
+        handler.print_progress(final=True)
         writer.close()
 
     print(f"exported records: {handler.exported}", file=sys.stderr)

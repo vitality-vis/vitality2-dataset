@@ -18,8 +18,11 @@ except ModuleNotFoundError:
 
 DEFAULT_SOURCE_COLLECTION = "paper_new"
 DEFAULT_STATS_COLLECTION = "paper_stats"
-DEFAULT_BATCH_SIZE = 200
-READ_FIELDS = ["source", "dblp_source", "year", "doi", "abstract"]
+DEFAULT_BATCH_SIZE = 5000
+RAW_COMPLETENESS_FIELDS = ["doi", "abstract"]
+BASE_READ_FIELDS = ["source", "dblp_source", "year"]
+FLAG_READ_FIELDS = [*BASE_READ_FIELDS, "has_doi", "has_abstract"]
+RAW_READ_FIELDS = [*BASE_READ_FIELDS, *RAW_COMPLETENESS_FIELDS]
 STATS_VECTOR = [0.0, 0.0]
 
 
@@ -29,6 +32,14 @@ def has_value(value: Any) -> bool:
     if isinstance(value, str):
         return bool(value.strip())
     return True
+
+
+def as_bool(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().casefold() in {"1", "true", "yes", "y"}
+    return bool(value)
 
 
 def normalize_text(value: Any) -> str:
@@ -70,11 +81,11 @@ def get_collection(name: str):
     return Collection(name)
 
 
-def iter_rows(collection, batch_size: int) -> Iterable[dict[str, Any]]:
+def iter_rows(collection, batch_size: int, output_fields: list[str]) -> Iterable[dict[str, Any]]:
     iterator = collection.query_iterator(
         batch_size=batch_size,
         expr="",
-        output_fields=READ_FIELDS,
+        output_fields=output_fields,
     )
     try:
         while True:
@@ -86,22 +97,29 @@ def iter_rows(collection, batch_size: int) -> Iterable[dict[str, Any]]:
         iterator.close()
 
 
-def compute_stats(source_collection, batch_size: int):
+def compute_stats(source_collection, batch_size: int, progress_every: int, use_dynamic_flags: bool):
     total = 0
+    started_at = time.monotonic()
+    output_fields = FLAG_READ_FIELDS if use_dynamic_flags else RAW_READ_FIELDS
     source_year_counts: Counter[tuple[str, int | None]] = Counter()
     source_dblp_counts: dict[tuple[str, str], Counter[str]] = defaultdict(Counter)
     source_summary_counts: dict[str, Counter[str]] = defaultdict(Counter)
 
-    for row in iter_rows(source_collection, batch_size):
+    for row in iter_rows(source_collection, batch_size, output_fields):
         total += 1
-        if total % 10000 == 0:
-            print(f"Scanned {total} rows...", flush=True)
+        if progress_every and total % progress_every == 0:
+            elapsed = max(time.monotonic() - started_at, 0.001)
+            print(f"Scanned {total} rows ({total / elapsed:,.0f} rows/s)...", flush=True)
 
         source = normalize_text(row.get("source"))
         dblp_source = normalize_text(row.get("dblp_source"))
         year = normalize_year(row.get("year"))
-        has_doi = has_value(row.get("doi"))
-        has_abstract = has_value(row.get("abstract"))
+        if use_dynamic_flags:
+            has_doi = as_bool(row.get("has_doi"))
+            has_abstract = as_bool(row.get("has_abstract"))
+        else:
+            has_doi = has_value(row.get("doi"))
+            has_abstract = has_value(row.get("abstract"))
         complete = has_doi and has_abstract
 
         source_year_counts[(source, year)] += 1
@@ -210,7 +228,7 @@ def materialize(args: argparse.Namespace) -> None:
 
     print(f"Reading from {args.source_collection}", flush=True)
     total, source_year_counts, source_dblp_counts, source_summary_counts = compute_stats(
-        source_collection, args.read_batch_size
+        source_collection, args.read_batch_size, args.progress_every, args.use_dynamic_flags
     )
     generated_at = int(time.time())
     rows = build_stats_rows(
@@ -240,8 +258,20 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Materialize paper stats into Zilliz paper_stats.")
     parser.add_argument("--source-collection", default=DEFAULT_SOURCE_COLLECTION)
     parser.add_argument("--stats-collection", default=DEFAULT_STATS_COLLECTION)
-    parser.add_argument("--read-batch-size", type=int, default=DEFAULT_BATCH_SIZE)
+    parser.add_argument(
+        "--read-batch-size",
+        type=int,
+        default=DEFAULT_BATCH_SIZE,
+        help="Zilliz query iterator batch size.",
+    )
     parser.add_argument("--write-batch-size", type=int, default=500)
+    parser.add_argument("--progress-every", type=int, default=10000)
+    parser.add_argument(
+        "--use-dynamic-flags",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Use dynamic has_doi/has_abstract fields instead of reading full doi/abstract values.",
+    )
     parser.add_argument(
         "--replace",
         action=argparse.BooleanOptionalAction,
