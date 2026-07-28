@@ -172,6 +172,26 @@ def clean_str_list(value: Any, *, nullable: bool = False) -> list[str] | None:
     return cleaned
 
 
+def normalise_author_name(value: Any) -> str:
+    text = normalize_text(value).casefold()
+    text = re.sub(r"\s+\d{4}$", "", text).strip()
+    return text[:512]
+
+
+def build_authors_normalised(value: Any) -> list[str] | None:
+    authors = clean_str_list(value, nullable=True)
+    if not authors:
+        return None
+    normalised = []
+    seen = set()
+    for author in authors:
+        text = normalise_author_name(author)
+        if text and text not in seen:
+            seen.add(text)
+            normalised.append(text)
+    return normalised or None
+
+
 def build_search_text(record: dict[str, Any]) -> str | None:
     parts: list[str] = []
 
@@ -204,6 +224,7 @@ def to_entity(record: dict[str, Any]) -> dict[str, Any]:
         "title": clean_str(record.get("title"), 4096),
         "abstract": abstract,
         "authors": clean_str_list(record.get("authors")),
+        "authors_normalised": build_authors_normalised(record.get("authors")),
         "keywords": clean_str_list(record.get("keywords"), nullable=True),
         "source": clean_str(record.get("source"), 1024),
         "dblp_source": clean_str(record.get("dblp_source"), 1024),
@@ -246,6 +267,7 @@ def validate_schema(collection) -> None:
         "title",
         "abstract",
         "authors",
+        "authors_normalised",
         "keywords",
         "source",
         "dblp_source",

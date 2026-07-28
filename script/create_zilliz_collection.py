@@ -76,6 +76,11 @@ def schema_plan(embedding_dim: int) -> list[FieldPlan]:
             "params": {"max_capacity": 256, "max_length": 512},
         },
         {
+            "name": "authors_normalised",
+            "dtype": "ARRAY<VARCHAR>",
+            "params": {"max_capacity": 256, "max_length": 512, "nullable": True},
+        },
+        {
             "name": "keywords",
             "dtype": "ARRAY<VARCHAR>",
             "params": {"max_capacity": 256, "max_length": 512, "nullable": True},
@@ -116,6 +121,14 @@ def create_schema(embedding_dim: int):
             max_length=512,
         ),
         FieldSchema(
+            name="authors_normalised",
+            dtype=DataType.ARRAY,
+            element_type=DataType.VARCHAR,
+            max_capacity=256,
+            max_length=512,
+            nullable=True,
+        ),
+        FieldSchema(
             name="keywords",
             dtype=DataType.ARRAY,
             element_type=DataType.VARCHAR,
@@ -139,7 +152,7 @@ def create_schema(embedding_dim: int):
         fields=fields,
         functions=[bm25_function],
         description="Vitality2 papers with dense embeddings plus BM25 full-text search over search_text.",
-        enable_dynamic_field=False,
+        enable_dynamic_field=True,
     )
 
 

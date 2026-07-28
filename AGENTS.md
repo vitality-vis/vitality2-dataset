@@ -186,6 +186,7 @@ Exported paper fields:
   "dblp_key": "conf/chi/...",
   "title": "...",
   "authors": ["..."],
+  "authors_normalised": ["..."],
   "source": "CHI",
   "dblp_source": "CHI Extended Abstracts",
   "year": "2026",

@@ -20,6 +20,7 @@ SPARSE_LOAD_FIELDS = [
     "year",
     "doi",
     "abstract",
+    "authors_normalised",
 ]
 
 
