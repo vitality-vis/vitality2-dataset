@@ -323,7 +323,14 @@ def process_source(
     def collect_completed(done: set[Future[dict[str, Any]]]) -> None:
         for future in done:
             doi = pending.pop(future)
-            cache_item = future.result()
+            try:
+                cache_item = future.result()
+            except RateLimited:
+                raise
+            except Exception as exc:  # noqa: BLE001
+                stats["request_errors"] += 1
+                print(f"Crossref request failed for {doi}: {exc}", file=sys.stderr)
+                continue
             cache.put(doi, cache_item)
             stats["fetched"] += 1
             if args.progress_every and stats["fetched"] % args.progress_every == 0:
@@ -463,18 +470,25 @@ def main() -> int:
         "enriched": 0,
         "still_missing": 0,
         "skipped_no_doi": 0,
+        "request_errors": 0,
+        "source_errors": 0,
     }
     outputs: dict[str, dict[str, int]] = {}
     stopped_reason = ""
 
-    try:
-        for path in files:
+    for path in files:
+        try:
             moved, remaining = process_source(path, args.enriched_dir, cache, args, stats)
             outputs[path.name] = {"moved_to_enriched": moved, "remaining_missing": remaining}
             print(f"completed {path.name}: moved={moved} remaining={remaining}", file=sys.stderr)
-    except RateLimited as exc:
-        stopped_reason = str(exc)
-        print(stopped_reason, file=sys.stderr)
+        except RateLimited as exc:
+            stopped_reason = str(exc)
+            print(stopped_reason, file=sys.stderr)
+            break
+        except Exception as exc:  # noqa: BLE001
+            stats["source_errors"] += 1
+            outputs[path.name] = {"moved_to_enriched": 0, "remaining_missing": 0}
+            print(f"Crossref source failed for {path.name}: {exc}", file=sys.stderr)
 
     manifest = {
         "papers_dir": str(args.papers_dir),

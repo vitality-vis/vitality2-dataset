@@ -101,7 +101,7 @@ def compute_stats(source_collection, batch_size: int, progress_every: int, use_d
     total = 0
     started_at = time.monotonic()
     output_fields = FLAG_READ_FIELDS if use_dynamic_flags else RAW_READ_FIELDS
-    source_year_counts: Counter[tuple[str, int | None]] = Counter()
+    source_year_counts: dict[tuple[str, int | None], Counter[str]] = defaultdict(Counter)
     source_dblp_counts: dict[tuple[str, str], Counter[str]] = defaultdict(Counter)
     source_summary_counts: dict[str, Counter[str]] = defaultdict(Counter)
 
@@ -122,7 +122,11 @@ def compute_stats(source_collection, batch_size: int, progress_every: int, use_d
             has_abstract = has_value(row.get("abstract"))
         complete = has_doi and has_abstract
 
-        source_year_counts[(source, year)] += 1
+        year_counts = source_year_counts[(source, year)]
+        year_counts["total"] += 1
+        year_counts["missing_doi"] += 0 if has_doi else 1
+        year_counts["missing_abstract"] += 0 if has_abstract else 1
+        year_counts["complete"] += 1 if complete else 0
 
         pair_counts = source_dblp_counts[(source, dblp_source)]
         pair_counts["total"] += 1
@@ -143,13 +147,13 @@ def build_stats_rows(
     *,
     source_collection_name: str,
     generated_at: int,
-    source_year_counts: Counter[tuple[str, int | None]],
+    source_year_counts: dict[tuple[str, int | None], Counter[str]],
     source_dblp_counts: dict[tuple[str, str], Counter[str]],
     source_summary_counts: dict[str, Counter[str]],
 ) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
 
-    for (source, year), count in sorted(
+    for (source, year), counts in sorted(
         source_year_counts.items(),
         key=lambda item: (item[0][0].casefold(), item[0][1] is None, item[0][1] or -1),
     ):
@@ -161,10 +165,10 @@ def build_stats_rows(
                 "source": source,
                 "dblp_source": None,
                 "year": year,
-                "paper_count": count,
-                "missing_doi_count": None,
-                "missing_abstract_count": None,
-                "complete_count": None,
+                "paper_count": counts["total"],
+                "missing_doi_count": counts["missing_doi"],
+                "missing_abstract_count": counts["missing_abstract"],
+                "complete_count": counts["complete"],
                 "generated_at": generated_at,
                 "_stats_vector": STATS_VECTOR,
             }

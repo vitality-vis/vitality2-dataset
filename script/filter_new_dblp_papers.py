@@ -26,6 +26,21 @@ def normalize_value(value: Any) -> str:
     return str(value or "").strip()
 
 
+def normalize_doi(value: Any) -> str:
+    doi = normalize_value(value)
+    lower = doi.lower()
+    for prefix in (
+        "https://doi.org/",
+        "http://doi.org/",
+        "https://dx.doi.org/",
+        "http://dx.doi.org/",
+        "doi:",
+    ):
+        if lower.startswith(prefix):
+            return doi[len(prefix) :].strip().casefold()
+    return doi.casefold()
+
+
 def default_update_dir() -> Path:
     stamp = dt.datetime.now().strftime("%Y%m%d")
     return Path("data/papers") / f"update{stamp}"
@@ -112,6 +127,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--split-dir", type=Path, default=DEFAULT_SPLIT_DIR)
     parser.add_argument("--existing-file", type=Path, default=DEFAULT_EXISTING_FILE)
     parser.add_argument(
+        "--existing-doi-file",
+        type=Path,
+        default=None,
+        help="Optional DOI file. Papers matching either existing key or existing DOI are filtered out.",
+    )
+    parser.add_argument(
         "--field",
         choices=("dblp_key", "paper_uid"),
         default="dblp_key",
@@ -138,6 +159,11 @@ def main() -> int:
         args.field = "paper_uid"
 
     existing_values = load_existing_values(args.existing_file, args.field)
+    existing_dois = (
+        {normalize_doi(value) for value in load_existing_values(args.existing_doi_file, "doi")}
+        if args.existing_doi_file is not None
+        else set()
+    )
     split_output_dir = prepare_output_dir(args.output_dir, args.overwrite)
     files = iter_split_files(args.split_dir)
     if not files:
@@ -147,8 +173,10 @@ def main() -> int:
         "split_files": len(files),
         "filter_field": args.field,
         "existing_values": len(existing_values),
+        "existing_dois": len(existing_dois),
         "scanned_papers": 0,
         "existing_papers": 0,
+        "existing_doi_papers": 0,
         "new_papers": 0,
         "missing_filter_field": 0,
         "output_files": 0,
@@ -162,10 +190,18 @@ def main() -> int:
         for paper in papers:
             stats["scanned_papers"] += 1
             value = normalize_value(paper.get(args.field))
+            doi = normalize_doi(paper.get("doi"))
             if not value:
                 stats["missing_filter_field"] += 1
-                new_papers.append(paper)
+                if doi and doi in existing_dois:
+                    stats["existing_doi_papers"] += 1
+                    stats["existing_papers"] += 1
+                else:
+                    new_papers.append(paper)
             elif value in existing_values:
+                stats["existing_papers"] += 1
+            elif doi and doi in existing_dois:
+                stats["existing_doi_papers"] += 1
                 stats["existing_papers"] += 1
             else:
                 new_papers.append(paper)
@@ -189,6 +225,7 @@ def main() -> int:
         **stats,
         "split_dir": str(args.split_dir),
         "existing_file": str(args.existing_file),
+        "existing_doi_file": str(args.existing_doi_file) if args.existing_doi_file else None,
         "output_dir": str(args.output_dir),
         "split_source_dir": str(split_output_dir),
         "by_source": dict(sorted(by_source.items())),

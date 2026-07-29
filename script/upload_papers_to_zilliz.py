@@ -333,6 +333,7 @@ def upload(args: argparse.Namespace) -> None:
     scanned_rows = 0
     skipped_rows = 0
     skipped_existing_uid_rows = 0
+    skipped_missing_doi_rows = 0
     inserted_rows = 0
     batch: list[dict[str, Any]] = []
 
@@ -349,6 +350,11 @@ def upload(args: argparse.Namespace) -> None:
                 file_skipped += 1
                 continue
             entity = to_entity(record)
+            if args.skip_missing_doi and not entity["doi"]:
+                skipped_rows += 1
+                skipped_missing_doi_rows += 1
+                file_skipped += 1
+                continue
             if entity["paper_uid"] in existing_uids:
                 skipped_rows += 1
                 skipped_existing_uid_rows += 1
@@ -376,6 +382,7 @@ def upload(args: argparse.Namespace) -> None:
     print(f"Scanned rows: {scanned_rows}", flush=True)
     print(f"Skipped rows: {skipped_rows}", flush=True)
     print(f"Skipped existing paper_uid rows: {skipped_existing_uid_rows}", flush=True)
+    print(f"Skipped missing DOI rows: {skipped_missing_doi_rows}", flush=True)
     print(f"Inserted rows in this run: {inserted_rows}", flush=True)
     print(f"Collection entities after flush: {collection.num_entities}", flush=True)
 
@@ -413,6 +420,11 @@ def parse_args() -> argparse.Namespace:
         "--resume",
         action="store_true",
         help="Continue from the current collection entity count using the deterministic file order.",
+    )
+    parser.add_argument(
+        "--skip-missing-doi",
+        action="store_true",
+        help="Skip records that do not have a DOI. Useful for incremental DBLP updates.",
     )
     return parser.parse_args()
 

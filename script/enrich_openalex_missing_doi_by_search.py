@@ -97,7 +97,10 @@ def load_dotenv_key(path: Path, key: str) -> str:
                 continue
             name, value = line.split("=", 1)
             if name.strip() == key:
-                return value.strip().strip("'\"")
+                value = value.strip()
+                if value.startswith(("'", '\"')):
+                    return value.strip("'\"")
+                return value.split(" #", 1)[0].strip()
     return ""
 
 
@@ -292,12 +295,16 @@ class SearchCache:
                     self.items[str(key)] = item
 
     def get(self, key: str) -> dict[str, Any] | None:
-        return self.items.get(key)
+        item = self.items.get(key)
+        if item and item.get("status") in {"ok", "no_query"}:
+            return item
+        return None
 
     def put(self, key: str, item: dict[str, Any]) -> None:
-        if item.get("status") in {"rate_limited", "key_unavailable"}:
+        if item.get("status") not in {"ok", "no_query"}:
             return
-        if key in self.items:
+        existing = self.items.get(key)
+        if existing and existing.get("status") in {"ok", "no_query"}:
             return
         self.path.parent.mkdir(parents=True, exist_ok=True)
         item = dict(item)
