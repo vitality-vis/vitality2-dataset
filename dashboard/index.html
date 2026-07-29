@@ -73,6 +73,36 @@
       margin-bottom: 14px;
     }
     .section-header h2 { margin: 0; }
+    .section-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .segmented {
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      overflow: hidden;
+      background: #fff;
+    }
+    .segmented button {
+      height: 30px;
+      padding: 0 10px;
+      border: 0;
+      border-radius: 0;
+      background: #fff;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+    }
+    .segmented button + button { border-left: 1px solid var(--line); }
+    .segmented button.active {
+      background: var(--blue);
+      color: #fff;
+    }
     .export-btn {
       height: 30px;
       padding: 0 10px;
@@ -239,7 +269,13 @@
     <section>
       <div class="section-header">
         <h2>Source / Year Heatmap</h2>
-        <button id="exportHeatmapCsv" class="export-btn" disabled>Export CSV</button>
+        <div class="section-actions">
+          <div class="segmented" aria-label="Heatmap mode">
+            <button id="heatmapCountMode" class="active" type="button">Count</button>
+            <button id="heatmapQualityMode" type="button">Quality</button>
+          </div>
+          <button id="exportHeatmapCsv" class="export-btn" disabled>Export CSV</button>
+        </div>
       </div>
       <div id="heatmap" class="chart"></div>
       <h3>Source year details</h3>
@@ -273,6 +309,8 @@
     $("token").value = localStorage.getItem("zilliz_token") || DEFAULT_TOKEN;
 
     let heatmapRows = [];
+    let heatmapSummaryRows = [];
+    let heatmapMode = "count";
 
     function fmt(n) { return Number(n || 0).toLocaleString(); }
     function csvCell(value) {
@@ -292,13 +330,21 @@
     function exportHeatmapCsv() {
       if (!heatmapRows.length) return;
       const sources = [...new Set(heatmapRows.map(r => r.source))].sort();
-      const byKey = new Map(heatmapRows.map(r => [`${r.source}::${r.year}`, Number(r.paper_count || 0)]));
+      const byKey = new Map(heatmapRows.map(r => [`${r.source}::${r.year}`, r]));
       const years = [...new Set(heatmapRows.map(r => Number(r.year)).filter(Boolean))].sort((a, b) => a - b);
       const out = [["source", ...years]];
       sources.forEach(source => {
-        out.push([source, ...years.map(year => byKey.get(`${source}::${year}`) || 0)]);
+        out.push([source, ...years.map(year => {
+          const row = byKey.get(`${source}::${year}`);
+          if (!row) return 0;
+          if (heatmapMode === "quality") {
+            const metric = qualityMetric(row);
+            return metric.hasQuality ? metric.ratio.toFixed(4) : "";
+          }
+          return Number(row.paper_count || 0);
+        })]);
       });
-      downloadCsv("source_year_heatmap.csv", out);
+      downloadCsv(`source_year_${heatmapMode}_heatmap.csv`, out);
     }
     function esc(s) {
       return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -424,6 +470,26 @@
       };
     }
 
+    function hasQualityFields(row) {
+      return row?.missing_doi_count != null && row?.missing_abstract_count != null && row?.complete_count != null;
+    }
+
+    function qualityMetric(row) {
+      const total = Number(row?.paper_count || 0);
+      const missingDoi = Number(row?.missing_doi_count || 0);
+      const missingAbs = Number(row?.missing_abstract_count || 0);
+      const complete = Number(row?.complete_count || 0);
+      const missingAny = Math.max(0, total - complete);
+      return {
+        total,
+        missingDoi,
+        missingAbs,
+        missingAny,
+        ratio: total > 0 ? missingAny / total : 0,
+        hasQuality: total > 0 && hasQualityFields(row)
+      };
+    }
+
     function pct(value, total) {
       return total > 0 ? (value / total) * 100 : 0;
     }
@@ -435,12 +501,20 @@
       return `<div class="metric"><div class="muted">${esc(label)}</div><div class="value">${fmt(value)}</div>${percentHtml}</div>`;
     }
 
+    function setHeatmapMode(mode) {
+      heatmapMode = mode;
+      $("heatmapCountMode").classList.toggle("active", mode === "count");
+      $("heatmapQualityMode").classList.toggle("active", mode === "quality");
+      if (heatmapRows.length) renderHeatmap(heatmapRows, heatmapSummaryRows);
+    }
+
     function renderHeatmap(yearRows, summaryRows) {
       heatmapRows = yearRows;
+      heatmapSummaryRows = summaryRows;
       $("exportHeatmapCsv").disabled = !yearRows.length;
       const sources = [...new Set(yearRows.map(r => r.source))].sort();
       const years = [...new Set(yearRows.map(r => Number(r.year)).filter(Boolean))].sort((a, b) => a - b);
-      const byKey = new Map(yearRows.map(r => [`${r.source}::${r.year}`, Number(r.paper_count || 0)]));
+      const byKey = new Map(yearRows.map(r => [`${r.source}::${r.year}`, r]));
       const summaryBySource = new Map(summaryRows.map(r => [r.source, r]));
       const maxCount = Math.max(1, ...yearRows.map(r => Number(r.paper_count || 0)));
       const qualityCols = [
@@ -470,14 +544,36 @@
         const y = top + i * cell;
         svg += `<text x="8" y="${y + 15}" class="bar-label">${esc(src)}</text>`;
         years.forEach((year, j) => {
-          const value = byKey.get(`${src}::${year}`) || 0;
-          const intensity = value ? clamp(Math.log1p(value) / Math.log1p(maxCount), 0.08, 1) : 0;
-          const color = value ? `rgba(37, 99, 235, ${intensity})` : "#f1f5f9";
-          const tip = dataTip("Year distribution", [
+          const row = byKey.get(`${src}::${year}`);
+          const value = Number(row?.paper_count || 0);
+          let color = "#f1f5f9";
+          let tipRows = [
             ["Source", src],
             ["Year", year],
             ["Papers", fmt(value)]
-          ]);
+          ];
+          let tipTitle = "Year distribution";
+          if (heatmapMode === "quality") {
+            const metric = qualityMetric(row);
+            if (metric.hasQuality) {
+              const intensity = clamp(metric.ratio, 0.08, 1);
+              color = metric.ratio ? `rgba(220, 38, 38, ${intensity})` : "#dcfce7";
+              tipTitle = "Year quality";
+              tipRows = [
+                ...tipRows,
+                ["Missing DOI", fmt(metric.missingDoi)],
+                ["Missing abstract", fmt(metric.missingAbs)],
+                ["Incomplete", `${fmt(metric.missingAny)} (${pctLabel(metric.missingAny, metric.total)})`]
+              ];
+            } else if (value > 0) {
+              color = "#e5e7eb";
+              tipRows = [...tipRows, ["Quality", "Not available in source_year stats"]];
+            }
+          } else {
+            const intensity = value ? clamp(Math.log1p(value) / Math.log1p(maxCount), 0.08, 1) : 0;
+            color = value ? `rgba(37, 99, 235, ${intensity})` : "#f1f5f9";
+          }
+          const tip = dataTip(tipTitle, tipRows);
           svg += `<rect class="mark" data-tip="${tip}" x="${left + j * cell}" y="${y}" width="19" height="19" fill="${color}"></rect>`;
         });
 
@@ -597,6 +693,8 @@
 
     $("loadBtn").addEventListener("click", load);
     $("exportHeatmapCsv").addEventListener("click", exportHeatmapCsv);
+    $("heatmapCountMode").addEventListener("click", () => setHeatmapMode("count"));
+    $("heatmapQualityMode").addEventListener("click", () => setHeatmapMode("quality"));
     $("settingsToggle").addEventListener("click", () => {
       const header = $("pageHeader");
       const collapsed = header.classList.toggle("collapsed");
