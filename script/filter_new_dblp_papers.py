@@ -20,6 +20,7 @@ from typing import Any
 
 DEFAULT_SPLIT_DIR = Path("data/dblp/split_source")
 DEFAULT_EXISTING_FILE = Path("data/zilliz/paper_new_dblp_keys.txt")
+DEFAULT_EXCLUDE_TITLE_FILE = Path("data/dblp/exclude_title.txt")
 
 
 def normalize_value(value: Any) -> str:
@@ -39,6 +40,10 @@ def normalize_doi(value: Any) -> str:
         if lower.startswith(prefix):
             return doi[len(prefix) :].strip().casefold()
     return doi.casefold()
+
+
+def normalize_title(value: Any) -> str:
+    return " ".join(normalize_value(value).casefold().split())
 
 
 def default_update_dir() -> Path:
@@ -85,6 +90,16 @@ def load_existing_values(path: Path, field: str) -> set[str]:
     return values
 
 
+def load_excluded_titles(path: Path) -> set[str]:
+    if not path.exists():
+        raise SystemExit(f"Exclude title file does not exist: {path}")
+    return {
+        title
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if (title := normalize_title(line)) and not title.startswith("#")
+    }
+
+
 def load_json_array(path: Path) -> list[dict[str, Any]]:
     data = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(data, list):
@@ -127,6 +142,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--split-dir", type=Path, default=DEFAULT_SPLIT_DIR)
     parser.add_argument("--existing-file", type=Path, default=DEFAULT_EXISTING_FILE)
     parser.add_argument(
+        "--exclude-title-file",
+        type=Path,
+        default=DEFAULT_EXCLUDE_TITLE_FILE,
+        help="One title per line. Matching records are excluded from the update batch.",
+    )
+    parser.add_argument(
         "--existing-doi-file",
         type=Path,
         default=None,
@@ -159,6 +180,7 @@ def main() -> int:
         args.field = "paper_uid"
 
     existing_values = load_existing_values(args.existing_file, args.field)
+    excluded_titles = load_excluded_titles(args.exclude_title_file)
     existing_dois = (
         {normalize_doi(value) for value in load_existing_values(args.existing_doi_file, "doi")}
         if args.existing_doi_file is not None
@@ -174,6 +196,8 @@ def main() -> int:
         "filter_field": args.field,
         "existing_values": len(existing_values),
         "existing_dois": len(existing_dois),
+        "excluded_titles": len(excluded_titles),
+        "excluded_title_papers": 0,
         "scanned_papers": 0,
         "existing_papers": 0,
         "existing_doi_papers": 0,
@@ -191,7 +215,9 @@ def main() -> int:
             stats["scanned_papers"] += 1
             value = normalize_value(paper.get(args.field))
             doi = normalize_doi(paper.get("doi"))
-            if not value:
+            if normalize_title(paper.get("title")) in excluded_titles:
+                stats["excluded_title_papers"] += 1
+            elif not value:
                 stats["missing_filter_field"] += 1
                 if doi and doi in existing_dois:
                     stats["existing_doi_papers"] += 1
@@ -226,6 +252,7 @@ def main() -> int:
         "split_dir": str(args.split_dir),
         "existing_file": str(args.existing_file),
         "existing_doi_file": str(args.existing_doi_file) if args.existing_doi_file else None,
+        "exclude_title_file": str(args.exclude_title_file),
         "output_dir": str(args.output_dir),
         "split_source_dir": str(split_output_dir),
         "by_source": dict(sorted(by_source.items())),

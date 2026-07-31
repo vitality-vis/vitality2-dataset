@@ -184,7 +184,7 @@ The main path works as follows:
 
 1. Downloads and splits DBLP when enabled.
 2. Reads `paper_new` and exports only `paper_uid`, `dblp_key`, `doi`, `year`, `has_doi`, and `has_abstract`.
-3. Treats a DBLP record as already present when either its `dblp_key` or DOI exists in `paper_new`.
+3. Excludes records whose normalized title exactly matches a line in `data/dblp/exclude_title.txt`, then treats a DBLP record as already present when either its `dblp_key` or DOI exists in `paper_new`.
 4. Sends initially new records through OpenAlex DOI enrichment. Records without DOI are then searched by title in OpenAlex.
 5. Rechecks every recovered DOI against Zilliz and collapses duplicate DOI values within the update batch. When two batch records have the same DOI, an enriched record is preferred over one still missing an abstract.
 6. Uses Semantic Scholar and Crossref only for retained DOI records still missing abstracts.
