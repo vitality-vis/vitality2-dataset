@@ -29,7 +29,7 @@ Each production row stores `embedding_model` from `config.toml` (logical model i
 
 ## Sync behavior
 
-Eligible rows: all `eligibility_fields` in `config.toml` are non-empty (default: `doi`, `title`, `abstract`).
+Eligible rows: all `eligibility_fields` in `config.toml` are non-empty (default: `title`). DOI and abstract are optional; records without an abstract receive a title-only embedding.
 
 Each batch is classified as:
 
@@ -42,3 +42,39 @@ Classification never downloads dense vectors. Missing embeddings are tracked wit
 BOOL field `has_embedding` (set `true` only when a vector was written successfully;
 filter: `has_embedding != true`). Embedding failures still upsert the row with
 `has_embedding=false` / null `embedding`; a final pass backfills those.
+
+## UMAP coordinates
+
+Generate two-dimensional visualization coordinates from existing `paper_prod.embedding`
+values and store them in the nullable JSON field `umap`:
+
+```bash
+python3 script_prod/umap_projection.py fit --execute
+```
+
+This fits a new `umap-learn` reducer with cosine distance, saves the fitted model
+under `data/zilliz/umap/`, and partial-upserts only `paper_uid` plus `umap`.
+
+For later new papers, keep the saved model and project only rows that do not
+already have `umap`:
+
+```bash
+python3 script_prod/umap_projection.py transform --execute
+```
+
+Use `fit` only when you intentionally want a new global layout. Use `transform`
+for incremental updates so existing papers keep stable coordinates.
+
+`script/update_papers.py` runs this as interactive step 9 after an incremental
+production sync. It transforms only records whose embedding was newly written
+or regenerated in that run, including title-only records without an abstract.
+It does not refit the model or scan all of `paper_prod`.
+
+The temporary incomplete-paper production sync can run the same incremental
+transform after successful production upserts. It only considers title-bearing
+records that are missing a DOI or abstract, and skips rows that already have
+UMAP coordinates:
+
+```bash
+python3 tmp/sync_incomplete_paper_new_to_prod.py --execute --update-umap
+```

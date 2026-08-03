@@ -54,6 +54,7 @@ ELIGIBILITY_FIELDS = [str(name) for name in _CONFIG["eligibility_fields"]]
 BATCH_SIZE = int(_CONFIG["batch_size"])
 EMBED_BATCH_SIZE = int(_CONFIG["embed_batch_size"])
 EMBED_TIMEOUT_SECONDS = float(_CONFIG.get("embed_timeout_seconds", 120))
+QUERY_TIMEOUT_SECONDS = float(_CONFIG.get("query_timeout_seconds", 120))
 
 # Scalar fields copied from development → production (excluding vectors / derived fields).
 SCALAR_FIELDS = [

@@ -9,7 +9,9 @@ embedding_dim = 1536
 # Not the Azure deployment name (that is AZURE_OPENAI_EMBED_DEPLOYMENT in .env).
 embedding_model = "text-embedding-3-small"
 embedding_fields = ["title", "abstract"]
-eligibility_fields = ["doi", "title", "abstract"]
+# DOI and abstract are optional in production. Title is required for a usable
+# search document and is sufficient to generate a title-only embedding.
+eligibility_fields = ["title"]
 
 # Keep small: Zilliz/gRPC rejects responses over ~4MB (abstracts + search_text;
 # prod lookups also pull 1536-d embeddings).
@@ -17,3 +19,6 @@ batch_size = 100
 embed_batch_size = 20
 # Per Azure embeddings.create() call; timeouts become retries then has_embedding=false.
 embed_timeout_seconds = 120
+# Per Zilliz query/query_iterator request. Prevent an unavailable collection read
+# from leaving an interactive update waiting indefinitely.
+query_timeout_seconds = 120

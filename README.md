@@ -86,7 +86,7 @@ Conceptually, the creation flow does the following:
 3. Extracts paper records with stable identifiers, authors, source metadata, publication year, DOI, and full-paper status.
 4. Enriches records with abstracts, keywords, and citation counts.
 5. Writes the curated dataset into `paper_new`.
-6. Selects production-eligible records, currently requiring core fields such as DOI, title, and abstract.
+6. Selects production-eligible records with a title; DOI and abstract are optional.
 7. Generates dense embeddings from the configured embedding input fields.
 8. Upserts production records into `paper_prod`.
 9. Builds vector and keyword-search indexes for retrieval.
@@ -119,6 +119,7 @@ The update flow has a main incremental DBLP path and an optional backfill path f
 flowchart TD
     A["Fresh DBLP dump"] --> B["Download and split selected sources"]
     Existing["Zilliz paper_new<br/>read only"] --> C["Export dblp_key, DOI, year,<br/>has_doi, has_abstract"]
+    Exclude["Zilliz paper_exclude<br/>dblp_key export"] --> D
     B --> D["Initial new-paper filter"]
     C --> D
     D -->|"existing dblp_key or DOI"| X["Skip"]
@@ -134,7 +135,7 @@ flowchart TD
     J -->|"Yes"| L["Upload new records to paper_new"]
 
     C --> N["Current-year records with<br/>DOI and no abstract"]
-    N -. "optional: update_existing_paper_abstracts.sh" .-> O["OpenAlex, Semantic Scholar,<br/>then Crossref"]
+    N -. "optional: interactive backfill" .-> O["OpenAlex, Semantic Scholar,<br/>then Crossref"]
     O --> P{"Abstract recovered?"}
     P -->|"Yes"| Q["Partial upsert into paper_new"]
     P -->|"No"| R["Keep for a later retry"]
@@ -142,7 +143,7 @@ flowchart TD
     L --> Updated["Updated paper_new"]
     Q --> Updated
     Updated --> M["Refresh paper_stats"]
-    Updated -. "optional: script_prod/sync.py" .-> S{"DOI, title, and abstract?"}
+    Updated -. "optional: incremental sync" .-> S{"Has title?"}
     S -->|"No"| T["Remain in paper_new"]
     S -->|"Yes"| U["Classify against paper_prod"]
     U -->|"unchanged"| X
@@ -150,95 +151,48 @@ flowchart TD
     U -->|"metadata-only change"| W["Scalar partial upsert"]
     V --> Y["paper_prod"]
     W --> Y
-    V -->|"embedding failure"| Z["has_embedding = false;<br/>final backfill retry"]
+    V -->|"embedding failure"| Z["has_embedding = false;<br/>retain for a later retry"]
     Z --> Y
+    Y --> AA["Incremental UMAP transform<br/>for newly embedded papers"]
 ```
 
-The main script is `script/update_paper_pipeline.sh`. It writes new-paper work under `data/papers/updateYYYYMMDD/` and prepares optional existing-paper candidates under `data/papers/update_missingYYYYMMDD/`.
-
-### Main Incremental Update
-
-Run the complete main workflow:
+The only update entry point is `script/update_papers.py`. It runs the DBLP, enrichment, Zilliz, production, and UMAP stages in one Python process.
 
 ```bash
-bash script/update_paper_pipeline.sh
+python3 script/update_papers.py
 ```
 
-If the DBLP dump has already been downloaded and split, resume from Zilliz export and filtering:
+Use `--no-write` to run only local processing and Zilliz read-only exports. Use `--yes` for non-interactive execution.
 
 ```bash
-DOWNLOAD_DBLP=0 \
-SPLIT_DBLP=0 \
-bash script/update_paper_pipeline.sh
+python3 script/update_papers.py --no-write
+python3 script/update_papers.py --yes
 ```
 
-To run the update logic without writing new records or statistics to Zilliz:
+### Requirements
 
-```bash
-RUN_UPLOAD=0 \
-RUN_STATS=0 \
-bash script/update_paper_pipeline.sh
-```
+- `ZILLIZ_URI` and `ZILLIZ_TOKEN` are required for Zilliz reads and writes.
+- `data/dblp/dump/dblp.xml`, `data/dblp/dump/dblp.dtd`, and `data/dblp/source_mapping.csv` are required when DBLP download is skipped.
+- `paper_exclude` must exist in Zilliz and contain `dblp_key` values. Step 2 exports them to `data/zilliz/paper_exclude_dblp_keys.txt` for step 3 filtering.
+- OpenAlex credentials are required when new-paper enrichment runs. Semantic Scholar and Crossref credentials are optional but used when their stages are selected.
+- Production sync requires `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_EMBED_DEPLOYMENT`, and `AZURE_OPENAI_EMBED_API_VERSION`. A title is sufficient for production; abstract and DOI may be empty.
+- Step 9 requires `data/zilliz/umap/paper_prod_umap.joblib`. It loads this existing model and skips UMAP when the file is absent; it never fits a new model.
 
-The main path works as follows:
+### Behavior
 
-1. Downloads and splits DBLP when enabled.
-2. Reads `paper_new` and exports only `paper_uid`, `dblp_key`, `doi`, `year`, `has_doi`, and `has_abstract`.
-3. Excludes records whose normalized title exactly matches a line in `data/dblp/exclude_title.txt`, then treats a DBLP record as already present when either its `dblp_key` or DOI exists in `paper_new`.
-4. Sends initially new records through OpenAlex DOI enrichment. Records without DOI are then searched by title in OpenAlex.
-5. Rechecks every recovered DOI against Zilliz and collapses duplicate DOI values within the update batch. When two batch records have the same DOI, an enriched record is preferred over one still missing an abstract.
-6. Uses Semantic Scholar and Crossref only for retained DOI records still missing abstracts.
-7. Uploads only retained records with DOI to `paper_new`. Records still without DOI remain in the local update directory and are skipped by the upload command.
-8. Rebuilds `paper_stats` only after a new-paper upload.
+1. Step 1 downloads DBLP and rebuilds selected-source split files when selected.
+2. Step 2 exports `paper_new` metadata (`paper_uid`, `dblp_key`, `doi`, `year`, `has_doi`, `has_abstract`) and all `paper_exclude.dblp_key` values. It also prepares current-year, DOI/no-abstract existing-paper candidates.
+3. Step 3 removes excluded DBLP keys and papers already present in `paper_new` by DBLP key or DOI.
+4. Step 4 runs OpenAlex DOI enrichment, OpenAlex title search for missing DOI, DOI deduplication, then optional Semantic Scholar and Crossref abstract recovery. Semantic Scholar and Crossref failures are non-fatal.
+5. Step 5 uploads only records with DOI to `paper_new`; no-DOI records stay in `data/papers/updateYYYYMMDD/`.
+6. Step 6 optionally enriches and partial-upserts current-year existing papers with DOI but no abstract.
+7. Step 7 refreshes `paper_stats` only after a `paper_new` write.
+8. Step 8 syncs `paper_prod`: changed UIDs only after a write, or all title-eligible `paper_new` rows when no write occurred and the user confirms. It classifies rows as new, embedding-input change, metadata-only change, or unchanged before writing.
+9. Step 9 transforms only the UIDs successfully embedded or re-embedded in step 8, then partial-upserts their UMAP coordinates. Metadata-only updates preserve the existing production UMAP value.
 
-Semantic Scholar and Crossref failures are non-fatal: affected records remain in `missing/`, while the rest of the update flow continues.
+New-paper output is under `data/papers/updateYYYYMMDD/`; existing-paper candidates are under `data/papers/update_missingYYYYMMDD/`. The final run summary is `data/papers/updateYYYYMMDD/update_cli_manifest.json`.
 
-Useful controls for the main script:
-
-| Variable | Default | Effect |
-| --- | --- | --- |
-| `UPDATE_DATE` | Current date | Date suffix used for update directories. |
-| `UPDATE_DIR` | `data/papers/updateYYYYMMDD` | New-paper update batch directory. |
-| `EXISTING_UPDATE_DIR` | `data/papers/update_missingYYYYMMDD` | Optional old-paper candidate and backfill directory. |
-| `EXISTING_UPDATE_YEAR` | Current year | Limits prepared old-paper candidates to one publication year. |
-| `DOWNLOAD_DBLP`, `SPLIT_DBLP` | `1` | Enable DBLP download and source splitting. |
-| `RUN_ENRICH`, `RUN_POST_DOI_DEDUP` | `1` | Enable metadata enrichment and recovered-DOI deduplication. |
-| `RUN_UPLOAD`, `RUN_STATS` | `1` | Enable Zilliz new-paper upload and statistics refresh. |
-| `PYTHON_BIN` | `python3` | Python interpreter used by the shell scripts. |
-
-### Existing Paper Abstract Backfill (Optional)
-
-The main script only prepares this path; it does not modify existing papers. Run `script/update_existing_paper_abstracts.sh` when the prepared records should be retried. By default, it processes `data/papers/update_missingYYYYMMDD/` for the current date, containing current-year `paper_new` records with DOI but no abstract.
-
-```bash
-bash script/update_existing_paper_abstracts.sh
-```
-
-This optional script runs DOI-based enrichment in this order:
-
-1. OpenAlex by DOI.
-2. Semantic Scholar for records still missing abstracts.
-3. Crossref for records still missing abstracts.
-
-Only old records that receive an abstract are partial-upserted back into `paper_new`. The partial update writes `doi`, `abstract`, `search_text`, `has_doi`, `has_abstract`, and recovered `keywords` or `citation_count`; it preserves existing embeddings, UMAP values, title, authors, source, and year. The script refreshes `paper_stats` by default after a successful run. Set `RUN_EXISTING_ENRICH=0`, `RUN_EXISTING_UPSERT=0`, or `RUN_STATS=0` to disable its corresponding stage.
-
-### Production Sync (Optional)
-
-Run `script_prod/sync.py` after the main update and, when applicable, after the optional abstract backfill. It creates `paper_prod` if necessary, then streams eligible `paper_new` records in batches. The script asks for confirmation before processing and before each batch unless "all" is selected.
-
-```bash
-python3 script_prod/sync.py
-```
-
-Non-secret settings live in `script_prod/config.toml`. By default, production eligibility requires non-empty `doi`, `title`, and `abstract`; dense embedding input is `title` plus `abstract`; and production rows are written to `paper_prod`.
-
-Production sync classifies each candidate record before writing:
-
-- New record: generate an embedding and upsert the full production row.
-- Embedding-input change: regenerate the embedding and upsert the full production row.
-- Metadata-only change: update scalar metadata while preserving the existing embedding.
-- Unchanged record: skip.
-- Embedding failure: upsert the scalar row with `has_embedding = false`, then make a final backfill attempt for records still missing embeddings.
+Every prompt accepts `yes/skip`. Skipping step 2 or 3 is allowed only when the corresponding dated local output and Zilliz cache files already exist; the CLI stops rather than continue with a missing cache.
 
 ## Zilliz Data Model
 

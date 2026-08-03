@@ -215,11 +215,14 @@ def build_stats_rows(
     return rows
 
 
-def insert_batches(collection, rows: list[dict[str, Any]], batch_size: int) -> int:
+def insert_batches(collection, rows: list[dict[str, Any]], batch_size: int, *, upsert: bool = False) -> int:
     inserted = 0
     for start in range(0, len(rows), batch_size):
         batch = rows[start : start + batch_size]
-        collection.insert(batch)
+        if upsert:
+            collection.upsert(batch)
+        else:
+            collection.insert(batch)
         inserted += len(batch)
     collection.flush()
     return inserted
@@ -243,14 +246,18 @@ def materialize(args: argparse.Namespace) -> None:
         source_summary_counts=source_summary_counts,
     )
 
+    # Preserve the last complete stats set until every replacement row is written.
+    # If interrupted, old rows remain available rather than leaving an empty collection.
+    inserted = insert_batches(stats_collection, rows, args.write_batch_size, upsert=args.replace)
     if args.replace:
         stats_collection.load()
-        expr = f'source_collection == "{args.source_collection}"'
+        expr = (
+            f'source_collection == "{args.source_collection}" '
+            f"and generated_at != {generated_at}"
+        )
         result = stats_collection.delete(expr)
         stats_collection.flush()
         print(f"Deleted old stats for {args.source_collection}: {result.delete_count}", flush=True)
-
-    inserted = insert_batches(stats_collection, rows, args.write_batch_size)
     print(f"Scanned papers: {total}", flush=True)
     print(f"Stats rows inserted: {inserted}", flush=True)
     print(f"source_year rows: {len(source_year_counts)}", flush=True)
@@ -258,7 +265,7 @@ def materialize(args: argparse.Namespace) -> None:
     print(f"source_summary rows: {len(source_summary_counts)}", flush=True)
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Materialize paper stats into Zilliz paper_stats.")
     parser.add_argument("--source-collection", default=DEFAULT_SOURCE_COLLECTION)
     parser.add_argument("--stats-collection", default=DEFAULT_STATS_COLLECTION)
@@ -282,7 +289,7 @@ def parse_args() -> argparse.Namespace:
         default=True,
         help="Delete existing stats rows for the source collection before inserting new rows.",
     )
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
 def main() -> None:

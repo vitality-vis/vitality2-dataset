@@ -168,6 +168,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output-dir", type=Path, default=default_update_dir())
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument("--limit", type=int, default=None, help="Optional output limit for testing.")
+    parser.add_argument("--progress-every", type=int, default=5000)
     return parser.parse_args()
 
 
@@ -175,6 +176,8 @@ def main() -> int:
     args = parse_args()
     if args.limit is not None and args.limit < 1:
         raise SystemExit("--limit must be >= 1")
+    if args.progress_every < 1:
+        raise SystemExit("--progress-every must be >= 1")
     if args.uid_file is not None:
         args.existing_file = args.uid_file
         args.field = "paper_uid"
@@ -231,6 +234,14 @@ def main() -> int:
                 stats["existing_papers"] += 1
             else:
                 new_papers.append(paper)
+
+            if stats["scanned_papers"] % args.progress_every == 0:
+                print(
+                    f"Scanned {stats['scanned_papers']}; excluded titles {stats['excluded_title_papers']}; "
+                    f"existing papers {stats['existing_papers']}; "
+                    f"new papers {stats['new_papers'] + len(new_papers)}",
+                    flush=True,
+                )
 
             if args.limit is not None and stats["new_papers"] + len(new_papers) >= args.limit:
                 keep = args.limit - stats["new_papers"]

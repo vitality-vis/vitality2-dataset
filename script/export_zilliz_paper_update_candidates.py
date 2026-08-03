@@ -192,6 +192,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--metadata-output", type=Path, default=DEFAULT_METADATA_OUTPUT)
     parser.add_argument("--candidates-dir", type=Path, default=DEFAULT_CANDIDATES_DIR)
     parser.add_argument("--batch-size", type=int, default=DEFAULT_BATCH_SIZE)
+    parser.add_argument("--progress-every", type=int, default=5000)
     parser.add_argument("--query-timeout", type=float, default=300.0)
     parser.add_argument("--limit", type=int, default=None, help="Optional scanned-row limit for testing.")
     parser.add_argument(
@@ -218,6 +219,8 @@ def main() -> int:
     args = parse_args()
     if args.batch_size < 1:
         raise SystemExit("--batch-size must be >= 1")
+    if args.progress_every < 1:
+        raise SystemExit("--progress-every must be >= 1")
     if args.query_timeout <= 0:
         raise SystemExit("--query-timeout must be > 0")
     if args.limit is not None and args.limit < 1:
@@ -266,7 +269,7 @@ def main() -> int:
                 writer.write(minimal_candidate(cleaned))
                 candidate_rows += 1
 
-            if scanned_rows % 100000 == 0:
+            if scanned_rows % args.progress_every == 0:
                 print(
                     f"Scanned {scanned_rows}; DBLP keys {len(exported_keys)}; DOIs {len(exported_dois)}; "
                     f"existing DOI/no-abstract candidates {candidate_rows}",

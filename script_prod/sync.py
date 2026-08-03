@@ -31,6 +31,7 @@ from common import (  # noqa: E402
     MISSING_EMBEDDING_EXPR,
     PROD_COLLECTION,
     PROD_LOOKUP_FIELDS,
+    QUERY_TIMEOUT_SECONDS,
     SCALAR_FIELDS,
     ask_confirm,
     build_embed_text,
@@ -45,6 +46,12 @@ from common import (  # noqa: E402
     values_equal,
 )
 from create_prod_collection import ensure_prod_collection  # noqa: E402
+
+
+# UMAP is derived from the production embedding.  It must not be copied from
+# paper_new during a metadata-only update, otherwise a source-side empty value
+# can erase a valid production projection.
+SYNC_SCALAR_FIELDS = [field for field in SCALAR_FIELDS if field != "umap"]
 
 
 @dataclass
@@ -68,7 +75,7 @@ class RunStats:
 
 
 def metadata_equal(left: dict[str, Any], right: dict[str, Any]) -> bool:
-    for key in SCALAR_FIELDS:
+    for key in SYNC_SCALAR_FIELDS:
         if key == "paper_uid":
             continue
         if not values_equal(left.get(key), right.get(key)):
@@ -155,7 +162,7 @@ def update_batch_tqdm(progress, classified: BatchClassified, *, failures: int | 
 
 
 def scalar_entity(row: dict[str, Any]) -> dict[str, Any]:
-    return {key: row.get(key) for key in SCALAR_FIELDS}
+    return {key: row.get(key) for key in SYNC_SCALAR_FIELDS}
 
 
 def lookup_prod_rows(client, collection_name: str, uids: list[str]) -> dict[str, dict[str, Any]]:
@@ -178,12 +185,18 @@ def lookup_prod_rows(client, collection_name: str, uids: list[str]) -> dict[str,
     return by_uid
 
 
-def iter_eligible_batches(client, collection_name: str) -> Iterator[list[dict[str, Any]]]:
+def iter_eligible_batches(
+    client,
+    collection_name: str,
+    *,
+    timeout: float = QUERY_TIMEOUT_SECONDS,
+) -> Iterator[list[dict[str, Any]]]:
     iterator = client.query_iterator(
         collection_name=collection_name,
         batch_size=BATCH_SIZE,
         filter=ELIGIBLE_EXPR,
         output_fields=DEV_OUTPUT_FIELDS,
+        timeout=timeout,
     )
     try:
         while True:

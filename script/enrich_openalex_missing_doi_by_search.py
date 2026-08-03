@@ -596,7 +596,7 @@ def merge_records(existing: list[dict[str, Any]], incoming: list[dict[str, Any]]
     return merged, added, replaced
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Recover missing DOI papers by searching OpenAlex Works by title."
     )
@@ -622,7 +622,7 @@ def parse_args() -> argparse.Namespace:
         help="Write progress JSON after this many processed papers. Use 0 to disable.",
     )
     parser.add_argument("--dry-run", action="store_true")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     if args.per_page < 1 or args.per_page > 100:
         parser.error("--per-page must be between 1 and 100")
     if args.sleep < 0:
@@ -638,8 +638,7 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
-def main() -> int:
-    args = parse_args()
+def run(args: argparse.Namespace) -> int:
     cache = SearchCache(args.cache)
     key_pool = OpenAlexKeyPool.from_args(args)
     session = requests.Session()
@@ -873,8 +872,13 @@ def main() -> int:
     manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     write_progress(force=True)
     progress(force=True)
-    print(json.dumps(manifest, ensure_ascii=False, indent=2), file=sys.stderr)
+    if not getattr(args, "quiet", False):
+        print(json.dumps(manifest, ensure_ascii=False, indent=2), file=sys.stderr)
     return 0
+
+
+def main() -> int:
+    return run(parse_args())
 
 
 if __name__ == "__main__":

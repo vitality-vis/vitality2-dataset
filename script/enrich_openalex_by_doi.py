@@ -396,7 +396,7 @@ def enrich_paper(paper: dict[str, Any], cache_item: dict[str, Any]) -> dict[str,
     return out
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Enrich DBLP split-source JSON files with OpenAlex abstracts by DOI."
     )
@@ -436,7 +436,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-retries", type=int, default=3)
     parser.add_argument("--retry-backoff", type=float, default=0.5)
     parser.add_argument("--overwrite", action="store_true")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     if args.workers < 1:
         parser.error("--workers must be >= 1")
     if args.request_timeout <= 0:
@@ -448,10 +448,10 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
-def main() -> int:
-    args = parse_args()
+def run(args: argparse.Namespace) -> int:
     client_config = configure_openalex(args)
-    print(f"OpenAlex auth mode: {client_config.auth_mode}", file=sys.stderr)
+    if not getattr(args, "quiet", False):
+        print(f"OpenAlex auth mode: {client_config.auth_mode}", file=sys.stderr)
     prepare_output(args)
     cache = DoiCache(args.cache)
     outputs = OutputSet(args.enriched_dir, args.missing_dir)
@@ -600,8 +600,13 @@ def main() -> int:
         json.dump(manifest, handle, ensure_ascii=False, indent=2)
         handle.write("\n")
 
-    print(json.dumps(manifest, ensure_ascii=False, indent=2), file=sys.stderr)
+    if not getattr(args, "quiet", False):
+        print(json.dumps(manifest, ensure_ascii=False, indent=2), file=sys.stderr)
     return 0
+
+
+def main() -> int:
+    return run(parse_args())
 
 
 class RateLimited(Exception):

@@ -403,7 +403,7 @@ def print_progress(stats: dict[str, int]) -> None:
     )
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Fill data/papers/missing abstracts with Semantic Scholar by DOI."
     )
@@ -434,7 +434,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--sleep", type=float, default=1.0)
     parser.add_argument("--progress-every", type=int, default=500)
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     if args.batch_size < 1 or args.batch_size > 500:
         parser.error("--batch-size must be between 1 and 500")
     if args.request_timeout <= 0:
@@ -450,12 +450,12 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
-def main() -> int:
-    args = parse_args()
-    print(
-        "Semantic Scholar auth mode: " + ("api_key" if args.api_key else "anonymous"),
-        file=sys.stderr,
-    )
+def run(args: argparse.Namespace) -> int:
+    if not getattr(args, "quiet", False):
+        print(
+            "Semantic Scholar auth mode: " + ("api_key" if args.api_key else "anonymous"),
+            file=sys.stderr,
+        )
     cache = SemanticScholarCache(args.cache)
     files = iter_missing_files(args.missing_dir, args.source or None)
     if not files:
@@ -476,10 +476,11 @@ def main() -> int:
         for path in files:
             moved, remaining = process_source(path, args.enriched_dir, cache, args, stats)
             outputs[path.name] = {"moved_to_enriched": moved, "remaining_missing": remaining}
-            print(
-                f"completed {path.name}: moved={moved} remaining={remaining}",
-                file=sys.stderr,
-            )
+            if not getattr(args, "quiet", False):
+                print(
+                    f"completed {path.name}: moved={moved} remaining={remaining}",
+                    file=sys.stderr,
+                )
     except (RateLimited, PermissionError) as exc:
         stopped_reason = str(exc)
         print(stopped_reason, file=sys.stderr)
@@ -498,8 +499,13 @@ def main() -> int:
     with manifest_path.open("w", encoding="utf-8") as handle:
         json.dump(manifest, handle, ensure_ascii=False, indent=2)
         handle.write("\n")
-    print(json.dumps(manifest, ensure_ascii=False, indent=2), file=sys.stderr)
+    if not getattr(args, "quiet", False):
+        print(json.dumps(manifest, ensure_ascii=False, indent=2), file=sys.stderr)
     return 0
+
+
+def main() -> int:
+    return run(parse_args())
 
 
 class RateLimited(Exception):

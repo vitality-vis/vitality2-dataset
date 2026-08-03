@@ -369,7 +369,7 @@ class StopParsing(Exception):
     pass
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Split DBLP article/inproceedings records into per-source JSON files."
     )
@@ -419,7 +419,7 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Print each progress update on a new line instead of refreshing one terminal line.",
     )
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
 def prepare_output_dir(output_dir: Path, overwrite: bool) -> None:
@@ -435,8 +435,7 @@ def prepare_output_dir(output_dir: Path, overwrite: bool) -> None:
         )
 
 
-def main() -> int:
-    args = parse_args()
+def run(args: argparse.Namespace) -> int:
     source_mapping = load_source_mapping(args.mapping)
     prepare_output_dir(args.output_dir, args.overwrite)
 
@@ -466,6 +465,10 @@ def main() -> int:
     print(f"sources: {len(writer.source_to_file)}", file=sys.stderr)
     print(f"output: {args.output_dir}", file=sys.stderr)
     return 0
+
+
+def main() -> int:
+    return run(parse_args())
 
 
 if __name__ == "__main__":
