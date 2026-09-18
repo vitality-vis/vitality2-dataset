@@ -6,6 +6,8 @@ Schema matches `paper_new`, plus:
   - `embedding_model` — logical embedding model id from config.toml
   - `has_embedding` — BOOL set strictly when a dense vector was written successfully
     (Milvus cannot filter FLOAT_VECTOR with `is null`, so this is the searchable marker)
+Dynamic fields are enabled so optional paper_new metadata can be carried into
+paper_prod without schema churn.
 """
 
 from __future__ import annotations
@@ -29,7 +31,7 @@ def create_schema(embedding_dim: int = EMBEDDING_DIM):
 
     schema = MilvusClient.create_schema(
         auto_id=False,
-        enable_dynamic_field=False,
+        enable_dynamic_field=True,
         description="Vitality2 production papers with dense embeddings and BM25 search.",
     )
     schema.add_field(field_name="paper_uid", datatype=DataType.VARCHAR, max_length=1024, is_primary=True)
@@ -61,6 +63,14 @@ def create_schema(embedding_dim: int = EMBEDDING_DIM):
         element_type=DataType.VARCHAR,
         max_capacity=256,
         max_length=512,
+    )
+    schema.add_field(
+        field_name="authors_normalised",
+        datatype=DataType.ARRAY,
+        element_type=DataType.VARCHAR,
+        max_capacity=256,
+        max_length=512,
+        nullable=True,
     )
     schema.add_field(
         field_name="keywords",
@@ -101,24 +111,45 @@ def _collection_field_names(client, collection_name: str) -> set[str]:
     return names
 
 
-def ensure_has_embedding_field(client=None) -> bool:
-    """Add has_embedding to an existing collection if missing. Returns True if added."""
+def ensure_compatible_fields(client=None, collection_name: str = PROD_COLLECTION) -> list[str]:
+    """Add nullable fields missing from an existing production collection."""
     from pymilvus import DataType
 
     client = client or connect_zilliz()
-    if "has_embedding" in _collection_field_names(client, PROD_COLLECTION):
-        return False
+    existing = _collection_field_names(client, collection_name)
+    added: list[str] = []
 
-    client.add_collection_field(
-        collection_name=PROD_COLLECTION,
-        field_name="has_embedding",
-        data_type=DataType.BOOL,
-        desc="True iff dense embedding was successfully written",
-        nullable=True,
-        default_value=False,
-    )
-    print(f"Added field has_embedding to existing collection: {PROD_COLLECTION}", flush=True)
-    return True
+    if "has_embedding" not in existing:
+        client.add_collection_field(
+            collection_name=collection_name,
+            field_name="has_embedding",
+            data_type=DataType.BOOL,
+            desc="True iff dense embedding was successfully written",
+            nullable=True,
+            default_value=False,
+        )
+        added.append("has_embedding")
+
+    if "authors_normalised" not in existing:
+        client.add_collection_field(
+            collection_name=collection_name,
+            field_name="authors_normalised",
+            data_type=DataType.ARRAY,
+            element_type=DataType.VARCHAR,
+            max_capacity=256,
+            max_length=512,
+            nullable=True,
+        )
+        added.append("authors_normalised")
+
+    for field_name in added:
+        print(f"Added field {field_name} to existing collection: {collection_name}", flush=True)
+    return added
+
+
+def ensure_has_embedding_field(client=None) -> bool:
+    """Backward-compatible wrapper for older callers."""
+    return "has_embedding" in ensure_compatible_fields(client)
 
 
 def ensure_prod_collection() -> bool:
@@ -127,7 +158,7 @@ def ensure_prod_collection() -> bool:
 
     if client.has_collection(PROD_COLLECTION):
         print(f"Using existing production collection: {PROD_COLLECTION}", flush=True)
-        ensure_has_embedding_field(client)
+        ensure_compatible_fields(client)
         return False
 
     schema = create_schema()

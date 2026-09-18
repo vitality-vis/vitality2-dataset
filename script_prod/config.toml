@@ -15,8 +15,8 @@ eligibility_fields = ["title"]
 
 # Keep small: Zilliz/gRPC rejects responses over ~4MB (abstracts + search_text;
 # prod lookups also pull 1536-d embeddings).
-batch_size = 100
-embed_batch_size = 20
+batch_size = 300
+embed_batch_size = 100
 # Per Azure embeddings.create() call; timeouts become retries then has_embedding=false.
 embed_timeout_seconds = 120
 # Per Zilliz query/query_iterator request. Prevent an unavailable collection read

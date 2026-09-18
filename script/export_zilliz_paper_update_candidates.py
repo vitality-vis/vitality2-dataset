@@ -17,15 +17,31 @@ except ModuleNotFoundError:
     from script.create_zilliz_collection import PROJECT_ROOT, load_dotenv_file
 
 
-DEFAULT_COLLECTION = "paper_new"
-DEFAULT_KEYS_OUTPUT = PROJECT_ROOT / "data" / "zilliz" / "paper_new_dblp_keys.txt"
-DEFAULT_DOIS_OUTPUT = PROJECT_ROOT / "data" / "zilliz" / "paper_new_dois.txt"
-DEFAULT_METADATA_OUTPUT = PROJECT_ROOT / "data" / "zilliz" / "paper_new_update_metadata.jsonl"
+DEFAULT_COLLECTION = "paper_prod"
+DEFAULT_KEYS_OUTPUT = PROJECT_ROOT / "data" / "zilliz" / "paper_prod_dblp_keys.txt"
+DEFAULT_DOIS_OUTPUT = PROJECT_ROOT / "data" / "zilliz" / "paper_prod_dois.txt"
+DEFAULT_METADATA_OUTPUT = PROJECT_ROOT / "data" / "zilliz" / "paper_prod_update_metadata.jsonl"
 DEFAULT_CANDIDATES_DIR = PROJECT_ROOT / "data" / "papers" / "existing_missing_abstract" / "split_source"
-DEFAULT_BATCH_SIZE = 5000
+DEFAULT_BATCH_SIZE = 500
 VECTOR_LOAD_FIELD = "search_sparse"
 PRIMARY_KEY_FIELD = "paper_uid"
-EXPORT_FIELDS = ["paper_uid", "dblp_key", "doi", "year", "has_doi", "has_abstract"]
+EXPORT_FIELDS = [
+    "paper_uid",
+    "dblp_key",
+    "doi",
+    "year",
+    "has_doi",
+    "has_abstract",
+    "title",
+    "abstract",
+    "authors",
+    "authors_normalised",
+    "keywords",
+    "source",
+    "dblp_source",
+    "citation_count",
+    "full_paper",
+]
 STATIC_LOAD_FIELDS = [
     field for field in EXPORT_FIELDS if field not in {"has_doi", "has_abstract"}
 ]
@@ -126,8 +142,14 @@ def minimal_candidate(row: dict[str, Any]) -> dict[str, Any]:
         "doi": normalize_doi(row.get("doi")),
         "year": normalize_year(row.get("year")),
         "abstract": "",
-        "source": "Unknown",
-        "dblp_source": "Unknown",
+        "title": normalize_text(row.get("title")),
+        "authors": row.get("authors") or [],
+        "authors_normalised": row.get("authors_normalised") or [],
+        "keywords": row.get("keywords") or [],
+        "source": normalize_text(row.get("source")) or "Unknown",
+        "dblp_source": normalize_text(row.get("dblp_source")) or "Unknown",
+        "citation_count": row.get("citation_count"),
+        "full_paper": bool(row.get("full_paper")),
     }
 
 

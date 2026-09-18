@@ -76,3 +76,13 @@ Cognitive Science,Cogn. Sci.,yes
 InfoVis,INFOVIS,yes
 SciVis,SciVis,yes
 PACMHCI,Proc. ACM Hum. Comput. Interact.,yes
+NeurIPS,NeurIPS,yes
+NeurIPS,NIPS,yes
+ICLR,ICLR,yes
+CVPR,CVPR,yes
+CVPR,CVPR (1),yes
+CVPR,CVPR (2),yes
+ACL,ACL,yes
+ACL,ACL (1),yes
+ACL,ACL (2),no
+SIGIR,SIGIR,yes

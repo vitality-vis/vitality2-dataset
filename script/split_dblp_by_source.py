@@ -33,12 +33,27 @@ DOI_PREFIXES = (
     "doi:",
 )
 DOI_RE = re.compile(r"10\.\d{4,9}/[^\s<>\"']+", re.IGNORECASE)
+YEAR_LIMITED_MAPPINGS = {
+    ("NeurIPS", "NeurIPS", True),
+    ("NeurIPS", "NIPS", True),
+    ("ICLR", "ICLR", True),
+    ("CVPR", "CVPR", True),
+    ("CVPR", "CVPR (1)", True),
+    ("CVPR", "CVPR (2)", True),
+    ("ACL", "ACL", True),
+    ("ACL", "ACL (1)", True),
+    ("ACL", "ACL (2)", False),
+    ("SIGIR", "SIGIR", True),
+}
+YEAR_LIMIT_RANGE = (2024, 2026)
 
 
 @dataclass(frozen=True)
 class SourceMappingEntry:
     source: str
     full_paper: bool
+    year_min: int | None = None
+    year_max: int | None = None
 
 
 def first(values: list[str]) -> str:
@@ -96,6 +111,12 @@ def parse_bool(value: str) -> bool:
     raise SystemExit(f"Invalid Full paper value: {value!r}")
 
 
+def year_limit_for(source: str, dblp_source: str, full_paper: bool) -> tuple[int, int] | None:
+    if (source, dblp_source, full_paper) in YEAR_LIMITED_MAPPINGS:
+        return YEAR_LIMIT_RANGE
+    return None
+
+
 def load_source_mapping(path: Path) -> dict[str, SourceMappingEntry]:
     """Load dblp_source -> source/full_paper mapping from CSV."""
 
@@ -124,7 +145,13 @@ def load_source_mapping(path: Path) -> dict[str, SourceMappingEntry]:
                     f"Conflicting Full paper value for DBLP source {dblp_source!r}: "
                     f"{existing.full_paper!r} vs {full_paper!r}"
                 )
-            mapping[dblp_source] = SourceMappingEntry(source=source, full_paper=full_paper)
+            year_limit = year_limit_for(source, dblp_source, full_paper)
+            mapping[dblp_source] = SourceMappingEntry(
+                source=source,
+                full_paper=full_paper,
+                year_min=year_limit[0] if year_limit else None,
+                year_max=year_limit[1] if year_limit else None,
+            )
 
     if not mapping:
         raise SystemExit(f"No source mappings loaded from {path}")
@@ -251,6 +278,7 @@ class DblpHandler(xml.sax.handler.ContentHandler):
         self.exported = 0
         self.seen_target_records = 0
         self.skipped_unmapped = 0
+        self.skipped_year_filter = 0
 
     def startElement(self, name: str, attrs: xml.sax.xmlreader.AttributesImpl) -> None:
         if name in RECORD_TAGS:
@@ -295,6 +323,8 @@ class DblpHandler(xml.sax.handler.ContentHandler):
             mapping_entry = self.source_mapping.get(self.dblp_source)
             if mapping_entry is None:
                 self.skipped_unmapped += 1
+            elif not self._passes_year_filter(mapping_entry):
+                self.skipped_year_filter += 1
             else:
                 paper = self._build_paper(mapping_entry)
                 self.writer.write(mapping_entry.source, paper)
@@ -306,6 +336,14 @@ class DblpHandler(xml.sax.handler.ContentHandler):
 
             if self.limit is not None and self.exported >= self.limit:
                 raise StopParsing()
+
+    def _passes_year_filter(self, mapping_entry: SourceMappingEntry) -> bool:
+        if mapping_entry.year_min is None or mapping_entry.year_max is None:
+            return True
+        year = normalize_text(self.year)
+        if not year.isdigit():
+            return False
+        return mapping_entry.year_min <= int(year) <= mapping_entry.year_max
 
     def _build_paper(self, mapping_entry: SourceMappingEntry) -> dict[str, object]:
         title = normalize_text(self.title)
@@ -350,6 +388,7 @@ class DblpHandler(xml.sax.handler.ContentHandler):
             f"exported={self.exported:,} "
             f"seen={self.seen_target_records:,} "
             f"skipped_unmapped={self.skipped_unmapped:,} "
+            f"skipped_year_filter={self.skipped_year_filter:,} "
             f"rate={rate:,.0f} records/s "
             f"elapsed={elapsed:,.1f}s"
         )
@@ -461,6 +500,7 @@ def run(args: argparse.Namespace) -> int:
     print(f"exported records: {handler.exported}", file=sys.stderr)
     print(f"target records seen: {handler.seen_target_records}", file=sys.stderr)
     print(f"skipped unmapped records: {handler.skipped_unmapped}", file=sys.stderr)
+    print(f"skipped year-filtered records: {handler.skipped_year_filter}", file=sys.stderr)
     print(f"mapped DBLP sources: {len(source_mapping)}", file=sys.stderr)
     print(f"sources: {len(writer.source_to_file)}", file=sys.stderr)
     print(f"output: {args.output_dir}", file=sys.stderr)

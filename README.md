@@ -215,7 +215,7 @@ flowchart LR
 
 ## `paper_prod` Schema
 
-`paper_prod` uses a fixed schema with dynamic fields disabled. The primary key is `paper_uid`.
+`paper_prod` uses a core schema with dynamic fields enabled. The primary key is `paper_uid`.
 
 | Field | Type | Nullable | Purpose |
 | --- | --- | --- | --- |
@@ -231,6 +231,7 @@ flowchart LR
 | `title` | `VARCHAR(4096)` | No | Paper title. |
 | `abstract` | `VARCHAR(65535)` | Yes | Paper abstract used for search and embedding input. |
 | `authors` | `ARRAY<VARCHAR(512)>` | No | Ordered author list. |
+| `authors_normalised` | `ARRAY<VARCHAR(512)>` | Yes | Normalized author names copied from the curated paper metadata. |
 | `keywords` | `ARRAY<VARCHAR(512)>` | Yes | Enriched keywords or topic labels. |
 | `source` | `VARCHAR(1024)` | No | Normalized Vitality source name. |
 | `dblp_source` | `VARCHAR(1024)` | No | Original or mapped bibliographic source name. |
@@ -244,6 +245,21 @@ Indexes:
 - `search_sparse`: sparse inverted index for BM25 keyword retrieval.
 
 The BM25 sparse vector is produced from `search_text`. Dense embedding availability is tracked with `has_embedding` because vector-null filtering is not a reliable operational filter.
+
+To backfill development-only dynamic metadata into an existing production
+collection:
+
+```bash
+python3 script_prod/merge_new_into_prod.py
+python3 script_prod/merge_new_into_prod.py --execute
+```
+
+The script partial-upserts only records whose `paper_uid` already exists in
+production.
+
+`has_doi`, `has_abstract`, `fullpaper_status`, arXiv full-paper metadata, and
+full-paper chunk mappings are carried as dynamic fields because they do not need
+to be part of the fixed production schema.
 
 ## Statistics and Dashboard
 

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Enrich DBLP split-source papers with OpenAlex metadata by DOI.
 
-Papers with a DOI are looked up as singleton OpenAlex Work requests through
-PyAlex. Records with a non-empty OpenAlex abstract are written to
+Papers with a DOI are looked up through OpenAlex Work DOI requests. Records
+with a non-empty OpenAlex abstract are written to
 data/papers/enriched/{source}.json. Records with a DOI but no usable
 abstract are written to data/papers/missing/{source}.json. Records without a
 DOI are collected in data/papers/missing/_missing_doi.json.
@@ -27,11 +27,17 @@ from urllib.parse import quote
 
 CACHE_SCHEMA_VERSION = 2
 OPENALEX_WORKS_URL = "https://api.openalex.org/works/"
+OPENALEX_WORKS_BATCH_URL = "https://api.openalex.org/works"
+OPENALEX_SELECT_FIELDS = (
+    "id,doi,display_name,publication_year,cited_by_count,abstract_inverted_index,"
+    "keywords,topics,concepts,type,open_access,primary_location"
+)
 
 
 @dataclass(frozen=True)
 class OpenAlexClientConfig:
     api_key: str = ""
+    api_keys: tuple[str, ...] = ()
     email: str = ""
     timeout: float = 20.0
     max_retries: int = 3
@@ -77,6 +83,23 @@ def load_dotenv_key(path: Path, key: str) -> str:
                 continue
             return value.strip().strip("'\"")
     return ""
+
+
+def load_openalex_api_keys(path: Path) -> tuple[str, ...]:
+    keys: list[str] = []
+
+    def add(value: str) -> None:
+        value = value.strip()
+        if value and value not in keys:
+            keys.append(value)
+
+    add(os.environ.get("OPENALEX_API_KEY", ""))
+    for index in range(1, 21):
+        add(os.environ.get(f"OPENALEX_API_KEY{index}", ""))
+    add(load_dotenv_key(path, "OPENALEX_API_KEY"))
+    for index in range(1, 21):
+        add(load_dotenv_key(path, f"OPENALEX_API_KEY{index}"))
+    return tuple(keys)
 
 
 def load_json_array(path: Path) -> list[dict[str, Any]]:
@@ -278,13 +301,14 @@ def configure_openalex(args: argparse.Namespace) -> OpenAlexClientConfig:
         ) from exc
 
     api_key = args.api_key
+    api_keys: tuple[str, ...] = (api_key,) if api_key else ()
     if not api_key and args.use_env_api_key:
-        api_key = os.environ.get("OPENALEX_API_KEY1", "")
-    if not api_key and args.use_env_api_key:
-        api_key = load_dotenv_key(args.env_file, "OPENALEX_API_KEY1")
-    auth_mode = "api_key" if api_key else "anonymous"
+        api_keys = load_openalex_api_keys(args.env_file)
+        api_key = api_keys[0] if api_keys else ""
+    auth_mode = f"api_keys:{len(api_keys)}" if api_keys else "anonymous"
     return OpenAlexClientConfig(
         api_key=api_key,
+        api_keys=api_keys,
         email=args.email,
         timeout=args.request_timeout,
         max_retries=args.max_retries,
@@ -296,8 +320,9 @@ def configure_openalex(args: argparse.Namespace) -> OpenAlexClientConfig:
 def fetch_work_by_doi(client_config: OpenAlexClientConfig, doi: str) -> dict[str, Any]:
     url = OPENALEX_WORKS_URL + "doi:" + quote(doi, safe="/")
     headers = {}
-    if client_config.api_key:
-        headers["Authorization"] = f"Bearer {client_config.api_key}"
+    api_key = client_config.api_key or (client_config.api_keys[0] if client_config.api_keys else "")
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
     if client_config.email:
         headers["From"] = client_config.email
 
@@ -349,6 +374,111 @@ def fetch_work_by_doi(client_config: OpenAlexClientConfig, doi: str) -> dict[str
             time.sleep(client_config.retry_backoff * (2**attempt))
 
     return work_to_cache_item(doi, None, error=last_error)
+
+
+def fetch_works_by_doi_batch(
+    client_config: OpenAlexClientConfig,
+    dois: list[str],
+    *,
+    key_index: int = 0,
+) -> dict[str, dict[str, Any]]:
+    requested = list(dict.fromkeys(normalize_doi(doi) for doi in dois if normalize_doi(doi)))
+    if not requested:
+        return {}
+
+    headers = {}
+    api_key = ""
+    if client_config.api_keys:
+        api_key = client_config.api_keys[key_index % len(client_config.api_keys)]
+    elif client_config.api_key:
+        api_key = client_config.api_key
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+    if client_config.email:
+        headers["From"] = client_config.email
+
+    filter_value = "doi:" + "|".join(f"https://doi.org/{doi}" for doi in requested)
+    params: dict[str, Any] = {
+        "filter": filter_value,
+        "per-page": len(requested),
+        "select": OPENALEX_SELECT_FIELDS,
+    }
+    if client_config.email:
+        params["mailto"] = client_config.email
+
+    last_error = ""
+    for attempt in range(client_config.max_retries + 1):
+        try:
+            response = requests.get(
+                OPENALEX_WORKS_BATCH_URL,
+                headers=headers,
+                params=params,
+                timeout=client_config.timeout,
+            )
+        except requests.RequestException as exc:
+            last_error = str(exc)
+        else:
+            if response.status_code == 429:
+                retry_after = ""
+                try:
+                    retry_after = str(response.json().get("retryAfter") or "")
+                except ValueError:
+                    pass
+                if attempt < client_config.max_retries:
+                    try:
+                        sleep_seconds = float(retry_after) if retry_after else client_config.retry_backoff
+                    except ValueError:
+                        sleep_seconds = client_config.retry_backoff
+                    sleep_seconds = max(sleep_seconds, client_config.retry_backoff * (2**attempt))
+                    print(
+                        f"OpenAlex batch 429; sleeping {sleep_seconds:.2f}s before retry "
+                        f"{attempt + 1}/{client_config.max_retries}",
+                        file=sys.stderr,
+                    )
+                    time.sleep(sleep_seconds)
+                    continue
+                return {
+                    doi: {
+                        "cache_schema_version": CACHE_SCHEMA_VERSION,
+                        "doi": doi,
+                        "status": "rate_limited",
+                        "error": f"HTTP 429: {response.text[:300]}",
+                        "retry_after": retry_after,
+                        "work": None,
+                    }
+                    for doi in requested
+                }
+            if response.status_code == 200:
+                try:
+                    results = response.json().get("results") or []
+                except ValueError as exc:
+                    return {doi: work_to_cache_item(doi, None, error=str(exc)) for doi in requested}
+                returned: dict[str, dict[str, Any]] = {}
+                for work in results:
+                    if not isinstance(work, dict):
+                        continue
+                    doi = normalize_doi(work.get("doi"))
+                    if doi:
+                        returned[doi.casefold()] = work
+                return {
+                    doi: work_to_cache_item(doi, returned.get(doi.casefold()))
+                    for doi in requested
+                }
+            if response.status_code not in {500, 502, 503, 504}:
+                return {
+                    doi: work_to_cache_item(
+                        doi,
+                        None,
+                        error=f"HTTP {response.status_code}: {response.text[:300]}",
+                    )
+                    for doi in requested
+                }
+            last_error = f"HTTP {response.status_code}: {response.text[:300]}"
+
+        if attempt < client_config.max_retries:
+            time.sleep(client_config.retry_backoff * (2**attempt))
+
+    return {doi: work_to_cache_item(doi, None, error=last_error) for doi in requested}
 
 
 def prepare_output(args: argparse.Namespace) -> None:
@@ -416,6 +546,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--sleep", type=float, default=0.0, help="Seconds to sleep after each uncached DOI lookup.")
     parser.add_argument("--workers", type=int, default=16, help="Concurrent uncached DOI lookups.")
     parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=100,
+        help="OpenAlex DOI batch size. Use 1 for legacy singleton concurrent lookups.",
+    )
+    parser.add_argument(
         "--max-pending",
         type=int,
         default=128,
@@ -439,6 +575,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     args = parser.parse_args(argv)
     if args.workers < 1:
         parser.error("--workers must be >= 1")
+    if not 1 <= args.batch_size <= 100:
+        parser.error("--batch-size must be between 1 and 100")
     if args.request_timeout <= 0:
         parser.error("--request-timeout must be > 0")
     if args.max_pending < args.workers:
@@ -475,6 +613,7 @@ def run(args: argparse.Namespace) -> int:
     pending: dict[Future[dict[str, Any]], tuple[str, dict[str, Any]]] = {}
     in_flight_dois: dict[str, Future[dict[str, Any]]] = {}
     stopped_reason = ""
+    batch_fetches = 0
 
     def consume(cache_item: dict[str, Any], paper: dict[str, Any]) -> None:
         if cache_item.get("status") == "rate_limited":
@@ -521,9 +660,27 @@ def run(args: argparse.Namespace) -> int:
             stats["fetched"] += 1
             consume(cache_item, paper)
 
+    def consume_uncached_batch(batch: list[tuple[str, dict[str, Any]]]) -> None:
+        nonlocal batch_fetches
+        if not batch:
+            return
+        items = fetch_works_by_doi_batch(
+            client_config,
+            [doi for doi, _ in batch],
+            key_index=batch_fetches,
+        )
+        batch_fetches += 1
+        for doi, paper in batch:
+            cache_item = items.get(doi) or work_to_cache_item(doi, None)
+            cache.put(doi, cache_item)
+            stats["fetched"] += 1
+            consume(cache_item, paper)
+        if args.sleep:
+            time.sleep(args.sleep)
+
     try:
-        executor = ThreadPoolExecutor(max_workers=args.workers)
-        try:
+        if args.batch_size > 1:
+            uncached_batch: list[tuple[str, dict[str, Any]]] = []
             for _, paper in iter_papers(input_files):
                 if args.limit is not None and stats["papers"] >= args.limit:
                     break
@@ -543,40 +700,68 @@ def run(args: argparse.Namespace) -> int:
                     consume(cache_item, paper)
                     continue
 
-                key = doi.casefold()
-                existing_future = in_flight_dois.get(key)
-                if existing_future is not None:
-                    done, _ = wait({existing_future}, return_when=FIRST_COMPLETED)
-                    collect_completed(done)
-                    cached_after_wait = cache.get(doi)
-                    if cached_after_wait is None:
-                        raise RuntimeError(f"Pending DOI lookup did not populate cache: {doi}")
-                    stats["cache_hits"] += 1
-                    consume(cached_after_wait, paper)
-                    continue
+                uncached_batch.append((doi, paper))
+                if len(uncached_batch) >= args.batch_size:
+                    consume_uncached_batch(uncached_batch)
+                    uncached_batch = []
 
-                future = executor.submit(fetch_work_by_doi, client_config, doi)
-                pending[future] = (doi, paper)
-                in_flight_dois[key] = future
-                if args.sleep:
-                    time.sleep(args.sleep)
+            consume_uncached_batch(uncached_batch)
+        else:
+            executor = ThreadPoolExecutor(max_workers=args.workers)
+            try:
+                for _, paper in iter_papers(input_files):
+                    if args.limit is not None and stats["papers"] >= args.limit:
+                        break
 
-                if len(pending) >= args.max_pending:
-                    done, _ = wait(set(pending), return_when=FIRST_COMPLETED)
-                    collect_completed(done)
+                    stats["papers"] += 1
+                    doi = normalize_doi(paper.get("doi"))
+                    if not doi:
+                        stats["missing_doi"] += 1
+                        outputs.write_missing_doi(paper)
+                        print_progress()
+                        continue
 
-            while pending:
-                done, _ = wait(set(pending), timeout=5.0, return_when=FIRST_COMPLETED)
-                if done:
-                    collect_completed(done)
-                else:
-                    print_progress(force=True)
-        except RateLimited as exc:
-            retry_after = exc.cache_item.get("retry_after") or "unknown"
-            stopped_reason = f"OpenAlex rate limited the run; retry_after={retry_after} seconds"
-            print(stopped_reason, file=sys.stderr)
-        finally:
-            executor.shutdown(wait=False, cancel_futures=True)
+                    stats["with_doi"] += 1
+                    cache_item = cache.get(doi)
+                    if cache_item is not None:
+                        stats["cache_hits"] += 1
+                        consume(cache_item, paper)
+                        continue
+
+                    key = doi.casefold()
+                    existing_future = in_flight_dois.get(key)
+                    if existing_future is not None:
+                        done, _ = wait({existing_future}, return_when=FIRST_COMPLETED)
+                        collect_completed(done)
+                        cached_after_wait = cache.get(doi)
+                        if cached_after_wait is None:
+                            raise RuntimeError(f"Pending DOI lookup did not populate cache: {doi}")
+                        stats["cache_hits"] += 1
+                        consume(cached_after_wait, paper)
+                        continue
+
+                    future = executor.submit(fetch_work_by_doi, client_config, doi)
+                    pending[future] = (doi, paper)
+                    in_flight_dois[key] = future
+                    if args.sleep:
+                        time.sleep(args.sleep)
+
+                    if len(pending) >= args.max_pending:
+                        done, _ = wait(set(pending), return_when=FIRST_COMPLETED)
+                        collect_completed(done)
+
+                while pending:
+                    done, _ = wait(set(pending), timeout=5.0, return_when=FIRST_COMPLETED)
+                    if done:
+                        collect_completed(done)
+                    else:
+                        print_progress(force=True)
+            finally:
+                executor.shutdown(wait=False, cancel_futures=True)
+    except RateLimited as exc:
+        retry_after = exc.cache_item.get("retry_after") or "unknown"
+        stopped_reason = f"OpenAlex rate limited the run; retry_after={retry_after} seconds"
+        print(stopped_reason, file=sys.stderr)
     finally:
         output_counts = outputs.close()
         print_progress(force=True)
@@ -588,6 +773,7 @@ def run(args: argparse.Namespace) -> int:
         "source": args.source or None,
         "limit": args.limit,
         "workers": args.workers,
+        "batch_size": args.batch_size,
         "max_pending": args.max_pending,
         "request_timeout": args.request_timeout,
         "auth_mode": client_config.auth_mode,

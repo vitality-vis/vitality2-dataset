@@ -25,9 +25,11 @@ import enrich_openalex_missing_doi_by_search
 import enrich_semantic_scholar_missing
 import export_zilliz_paper_update_candidates as zilliz_export
 import filter_new_dblp_papers as paper_filter
+import download_openalex_pdf_fullpaper_md as fullpaper_download
+import prefetch_openalex_pdf_urls as fullpaper_prefetch
 import split_dblp_by_source
+import upload_fullpaper_chunks_to_zilliz as fullpaper_upload
 import upload_papers_to_zilliz as paper_upload
-import upsert_enriched_papers_to_zilliz as paper_upsert
 
 
 warnings.filterwarnings(
@@ -46,7 +48,6 @@ import umap_projection  # noqa: E402
 from common import EMBEDDING_DIM  # noqa: E402
 
 
-PAPER_NEW = "paper_new"
 PAPER_EXCLUDE = "paper_exclude"
 PAPER_PROD = "paper_prod"
 METADATA_FIELDS = ["paper_uid", "dblp_key", "doi", "year", "has_doi", "has_abstract"]
@@ -137,8 +138,9 @@ class UpdateCLI:
     existing_update_dir: Path
     report: dict[str, str] = field(default_factory=dict)
     changed_uids: set[str] = field(default_factory=set)
-    new_uploaded: int = 0
+    new_upserted: int = 0
     existing_upserted: int = 0
+    fullpaper_updated: int = 0
     production_umap_uids: set[str] = field(default_factory=set)
     production_umap_updated: int = 0
     active_stage: str | None = None
@@ -301,25 +303,25 @@ class UpdateCLI:
         return keys
 
     def export_existing(self) -> tuple[set[str], set[str], set[str]]:
-        self.stage(2, "Exporting paper_new metadata")
-        keys_path = PROJECT_ROOT / "data/zilliz/paper_new_dblp_keys.txt"
-        dois_path = PROJECT_ROOT / "data/zilliz/paper_new_dois.txt"
+        self.stage(2, "Exporting paper_prod metadata")
+        keys_path = PROJECT_ROOT / "data/zilliz/paper_prod_dblp_keys.txt"
+        dois_path = PROJECT_ROOT / "data/zilliz/paper_prod_dois.txt"
         excluded_path = PROJECT_ROOT / "data/zilliz/paper_exclude_dblp_keys.txt"
         manifest_path = self.existing_update_dir / "existing_missing_abstract_manifest.json"
 
         def action() -> None:
             zilliz_export.prepare_candidates_dir(self.existing_update_dir / "split_source", overwrite=True)
-            collection = zilliz_export.connect_collection(PAPER_NEW)
+            collection = zilliz_export.connect_collection(PAPER_PROD)
             collection.load(load_fields=[*zilliz_export.STATIC_LOAD_FIELDS, zilliz_export.VECTOR_LOAD_FIELD])
             keys: set[str] = set()
             dois: set[str] = set()
             candidates = 0
-            metadata_path = PROJECT_ROOT / "data/zilliz/paper_new_update_metadata.jsonl"
+            metadata_path = PROJECT_ROOT / "data/zilliz/paper_prod_update_metadata.jsonl"
             metadata_path.parent.mkdir(parents=True, exist_ok=True)
             writer = zilliz_export.JsonArrayWriter(self.existing_update_dir / "split_source/Unknown.json")
             scanned = 0
             with metadata_path.open("w", encoding="utf-8") as metadata:
-                for scanned, row in enumerate(zilliz_export.iter_rows(collection, 5000, 300.0), start=1):
+                for scanned, row in enumerate(zilliz_export.iter_rows(collection, 500, 300.0), start=1):
                     clean = zilliz_export.clean_row(row)
                     if key := zilliz_export.normalize_text(clean.get("dblp_key")):
                         keys.add(key)
@@ -334,14 +336,14 @@ class UpdateCLI:
                         candidates += 1
                     if scanned % 2000 == 0:
                         self.live_progress(
-                            "paper_new export",
+                            "paper_prod export",
                             f"scanned={scanned} keys={len(keys)} dois={len(dois)} old_candidates={candidates}",
                         )
             writer.close()
             keys_path.write_text("\n".join(sorted(keys)) + "\n", encoding="utf-8")
             dois_path.write_text("\n".join(sorted(dois)) + "\n", encoding="utf-8")
             write_json(manifest_path, {
-                "collection": PAPER_NEW, "scanned_rows": scanned, "dblp_keys": len(keys), "dois": len(dois),
+                "collection": PAPER_PROD, "scanned_rows": scanned, "dblp_keys": len(keys), "dois": len(dois),
                 "existing_doi_missing_abstract": candidates, "candidate_year": int(self.update_date[:4]),
             })
             self._existing_keys, self._existing_dois = keys, dois
@@ -349,8 +351,8 @@ class UpdateCLI:
         self._existing_keys: set[str] = set()
         self._existing_dois: set[str] = set()
         excluded: set[str] = set()
-        if self.prompt_yes_skip("Export paper_new and paper_exclude metadata?"):
-            if not self.run_stage("paper_new export", action):
+        if self.prompt_yes_skip("Export paper_prod and paper_exclude metadata?"):
+            if not self.run_stage("paper_prod export", action):
                 raise AbortRun
             if not self.run_stage("paper_exclude export", lambda: excluded.update(self.export_excluded_keys())):
                 raise AbortRun
@@ -383,7 +385,7 @@ class UpdateCLI:
             if cached_candidates and not has_split_files(self.existing_update_dir / "split_source"):
                 print("Cannot skip metadata export: cached old-paper candidate output is incomplete.")
                 raise AbortRun
-            print("Using cached paper_new metadata.")
+            print("Using cached paper_prod metadata.")
 
         manifest = load_json(manifest_path)
         print(f"Rows: {manifest.get('scanned_rows', 0)} | DBLP keys: {manifest.get('dblp_keys', 0)} | DOIs: {manifest.get('dois', 0)}")
@@ -450,12 +452,35 @@ class UpdateCLI:
 
     def run_enrichment(self, directory: Path, *, existing: bool) -> None:
         prefix = "Existing " if existing else ""
-        openalex_args = self.service_args(enrich_openalex_by_doi, ["--input-dir", str(directory / "split_source"), "--output-dir", str(directory), "--cache", str(directory / "cache/openalex_doi_cache.jsonl"), "--progress-every", "50", "--overwrite"])
+        openalex_args = self.service_args(
+            enrich_openalex_by_doi,
+            [
+                "--input-dir",
+                str(directory / "split_source"),
+                "--output-dir",
+                str(directory),
+                "--cache",
+                str(directory / "cache/openalex_doi_cache.jsonl"),
+                "--workers",
+                str(self.args.openalex_workers),
+                "--max-pending",
+                str(self.args.openalex_max_pending),
+                "--sleep",
+                str(self.args.openalex_sleep),
+                "--use-env-api-key",
+                "--progress-every",
+                "50",
+                "--overwrite",
+            ],
+        )
         self.run_required_openalex(f"{prefix}OpenAlex DOI enrichment", lambda: enrich_openalex_by_doi.run(openalex_args), directory / "openalex_manifest.json")
         missing_doi = directory / "missing/_missing_doi.json"
         if not existing and missing_doi.exists() and missing_doi.stat().st_size > 2:
-            title_args = self.service_args(enrich_openalex_missing_doi_by_search, ["--papers-dir", str(directory), "--cache", str(directory / "cache/openalex_missing_doi_search_cache.jsonl"), "--use-env-api-key", "--progress-every", "50"])
-            self.run_required_openalex(f"{prefix}OpenAlex title search", lambda: enrich_openalex_missing_doi_by_search.run(title_args), directory / "openalex_missing_doi_search_manifest.json")
+            if not self.prompt_yes_skip(f"Run {prefix}OpenAlex title search for missing-DOI records?"):
+                self.report[f"{prefix}OpenAlex title search"] = "skipped"
+            else:
+                title_args = self.service_args(enrich_openalex_missing_doi_by_search, ["--papers-dir", str(directory), "--cache", str(directory / "cache/openalex_missing_doi_search_cache.jsonl"), "--use-env-api-key", "--progress-every", "50"])
+                self.run_required_openalex(f"{prefix}OpenAlex title search", lambda: enrich_openalex_missing_doi_by_search.run(title_args), directory / "openalex_missing_doi_search_manifest.json")
 
         for label, module, values in (
             (f"{prefix}Semantic Scholar", enrich_semantic_scholar_missing, ["--papers-dir", str(directory), "--cache", str(directory / "cache/semantic_scholar_doi_cache.jsonl"), "--use-env-api-key", "--progress-every", "50"]),
@@ -498,7 +523,24 @@ class UpdateCLI:
 
     def enrich_new(self, candidates: int, existing_dois: set[str]) -> int:
         self.stage(4, "New-paper enrichment and DOI deduplication")
-        if not candidates or not self.prompt_yes_skip("Start new-paper enrichment?"):
+        if not candidates:
+            self.report["new enrichment"] = "skipped"
+            return 0
+        if not self.prompt_yes_skip("Start new-paper enrichment?"):
+            counts = count_records(self.update_dir)
+            if counts["total"]:
+                dedup: dict[str, int] = {}
+                if not self.run_stage("Recovered-DOI deduplication", lambda: dedup.update(self.deduplicate_recovered_dois(existing_dois))):
+                    raise AbortRun
+                counts = count_records(self.update_dir)
+                print(
+                    f"Using cached enrichment output: total={counts['total']} "
+                    f"with DOI={counts['with_doi']} with abstract={counts['with_abstract']} "
+                    f"removed existing DOI={dedup.get('removed_existing_doi', 0)} "
+                    f"removed duplicates={dedup.get('removed_duplicate_doi', 0)}"
+                )
+                self.report["new enrichment"] = "cached"
+                return counts["with_doi"]
             self.report["new enrichment"] = "skipped"
             return 0
         self.run_enrichment(self.update_dir, existing=False)
@@ -507,57 +549,93 @@ class UpdateCLI:
             raise AbortRun
         title_stats = load_json(self.update_dir / "openalex_missing_doi_search_manifest.json").get("stats", {})
         counts = count_records(self.update_dir)
-        print(f"Recovered DOI: {title_stats.get('recovered_doi', 0)} | Already in paper_new: {dedup.get('removed_existing_doi', 0)} | Batch duplicates: {dedup.get('removed_duplicate_doi', 0)}")
+        print(f"Recovered DOI: {title_stats.get('recovered_doi', 0)} | Already in paper_prod: {dedup.get('removed_existing_doi', 0)} | Batch duplicates: {dedup.get('removed_duplicate_doi', 0)}")
         print(f"Ready with DOI: {counts['with_doi']} | Still without DOI: {counts['total'] - counts['with_doi']} | With abstract: {counts['with_abstract']}")
         self.report["new enrichment"] = "executed"
         return counts["with_doi"]
 
+    def iter_prod_entities(self, directory: Path, *, require_doi: bool, require_abstract: bool) -> Iterable[dict[str, Any]]:
+        for _, record in read_records(directory, include_missing_doi=False):
+            entity = paper_upload.to_entity(record)
+            if require_doi and not entity["doi"]:
+                continue
+            if require_abstract and not entity["abstract"]:
+                continue
+            if not production_sync.is_eligible_row(entity):
+                continue
+            yield entity
+
+    def upsert_prod_entities(self, entities: list[dict[str, Any]], *, label: str) -> production_sync.RunStats:
+        stats = production_sync.RunStats()
+        if not entities:
+            return stats
+
+        def action() -> None:
+            client = production_sync.connect_zilliz()
+            production_sync.ensure_prod_collection()
+            try:
+                client.load_collection(PAPER_PROD)
+            except Exception as exc:  # noqa: BLE001
+                print(f"  {label}: note: could not load {PAPER_PROD} ({exc})", flush=True)
+
+            embedder: production_sync.AzureEmbedder | None = None
+            for index, group in enumerate(chunked(entities, production_sync.BATCH_SIZE), start=1):
+                prod = production_sync.lookup_prod_rows(client, PAPER_PROD, [str(row["paper_uid"]) for row in group])
+                classified = production_sync.classify_batch(
+                    group,
+                    prod,
+                    embedding_model=production_sync.EMBEDDING_MODEL,
+                )
+                embed_rows = classified.new + classified.embed_input_change
+                if embed_rows and embedder is None:
+                    embedder = production_sync.AzureEmbedder()
+                vectors, failures = (
+                    production_sync.embed_rows(embedder, embed_rows) if embedder is not None else ({}, 0)
+                )
+                self.production_umap_uids.update(uid for uid, vector in vectors.items() if vector is not None)
+                full_entities = production_sync.build_full_upsert_entities(
+                    embed_rows,
+                    embeddings_by_uid=vectors,
+                    embedding_model=production_sync.EMBEDDING_MODEL,
+                )
+                meta_entities = production_sync.build_metadata_partial_entities(classified.metadata_only_change)
+                production_sync.upsert_entities(client, PAPER_PROD, full_entities)
+                production_sync.upsert_entities(client, PAPER_PROD, meta_entities, partial_update=True)
+                written = [str(row["paper_uid"]) for row in full_entities + meta_entities if row.get("paper_uid")]
+                self.changed_uids.update(written)
+                stats.new += len(classified.new)
+                stats.embed_input_change += len(classified.embed_input_change)
+                stats.metadata_only_change += len(classified.metadata_only_change)
+                stats.unchanged += len(classified.unchanged)
+                stats.embedding_failures += failures
+                stats.upserted += len(written)
+                self.live_progress(
+                    label,
+                    f"batch={index} new={stats.new} reembed={stats.embed_input_change} "
+                    f"metadata={stats.metadata_only_change} unchanged={stats.unchanged} failures={stats.embedding_failures}",
+                )
+            client.flush(PAPER_PROD)
+
+        if not self.run_stage(label, action):
+            raise AbortRun
+        return stats
+
     def upload_new(self, candidates: int) -> None:
-        self.stage(5, "New-paper upload")
+        self.stage(5, "New-paper production upsert")
         if not candidates:
-            print("No uploadable new records.")
-            self.report["new upload"] = "skipped"
+            print("No upsertable new records.")
+            self.report["new prod upsert"] = "skipped"
             return
         counts = count_records(self.update_dir)
-        print(f"Uploadable with DOI: {counts['with_doi']} | Without DOI skipped: {counts['total'] - counts['with_doi']} | With abstract: {counts['with_abstract']} | Missing abstract: {counts['missing_abstract']}")
-        if not counts["with_doi"] or not self.prompt_yes_skip("Upload new records?", write=True):
-            self.report["new upload"] = "skipped"
+        print(f"Upsertable with DOI: {counts['with_doi']} | Without DOI skipped: {counts['total'] - counts['with_doi']} | With abstract: {counts['with_abstract']} | Missing abstract: {counts['missing_abstract']}")
+        if not counts["with_doi"] or not self.prompt_yes_skip("Upsert new records to paper_prod?", write=True):
+            self.report["new prod upsert"] = "skipped"
             return
-        uploaded: set[str] = set()
-        def action() -> None:
-            collection = paper_upload.connect_collection(PAPER_NEW)
-            paper_upload.validate_schema(collection)
-            batch: list[dict[str, Any]] = []
-            batch_uids: list[str] = []
-
-            def insert_current_batch() -> None:
-                if not batch:
-                    return
-                collection.insert(batch)
-                uploaded.update(batch_uids)
-                self.changed_uids.update(batch_uids)
-                self.new_uploaded = len(uploaded)
-                print(f"  new upload: inserted={len(uploaded)}", flush=True)
-                batch.clear()
-                batch_uids.clear()
-
-            try:
-                for _, record in read_records(self.update_dir):
-                    entity = paper_upload.to_entity(record)
-                    if not entity["doi"]:
-                        continue
-                    batch.append(entity)
-                    batch_uids.append(str(entity["paper_uid"]))
-                    if len(batch) >= 500:
-                        insert_current_batch()
-                insert_current_batch()
-            finally:
-                collection.flush()
-        if not self.run_stage("New-paper upload", action):
-            raise AbortRun
-        self.changed_uids.update(uploaded)
-        self.new_uploaded = len(uploaded)
-        self.report["new upload"] = "executed"
+        entities = list(self.iter_prod_entities(self.update_dir, require_doi=True, require_abstract=False))
+        stats = self.upsert_prod_entities(entities, label="New paper_prod upsert")
+        self.new_upserted = stats.upserted
+        print(f"New production upserted: {stats.upserted} | unchanged={stats.unchanged} | embedding failures={stats.embedding_failures}")
+        self.report["new prod upsert"] = "executed"
 
     def backfill_existing(self) -> None:
         self.stage(6, "Existing-paper abstract backfill")
@@ -568,59 +646,105 @@ class UpdateCLI:
         self.run_enrichment(self.existing_update_dir, existing=True)
         counts = count_records(self.existing_update_dir)
         print(f"Existing candidates: {candidates} | Abstracts recovered: {counts['with_abstract']} | Still without abstract: {counts['missing_abstract']}")
-        if not counts["with_abstract"] or not self.prompt_yes_skip("Partial-upsert recovered abstracts?", write=True):
+        if not counts["with_abstract"] or not self.prompt_yes_skip("Upsert recovered abstracts to paper_prod?", write=True):
             self.report["existing upsert"] = "skipped"
             return
-        upserted: set[str] = set()
-        def action() -> None:
-            client = paper_upsert.connect_client()
-            batch: list[dict[str, Any]] = []
-            batch_uids: list[str] = []
-
-            def upsert_current_batch() -> None:
-                if not batch:
-                    return
-                client.upsert(collection_name=PAPER_NEW, data=batch, partial_update=True)
-                upserted.update(batch_uids)
-                self.changed_uids.update(batch_uids)
-                self.existing_upserted = len(upserted)
-                print(f"  existing upsert: updated={len(upserted)}", flush=True)
-                batch.clear()
-                batch_uids.clear()
-
-            try:
-                for _, record in read_records(self.existing_update_dir):
-                    if not paper_upsert.has_abstract(record):
-                        continue
-                    entity = paper_upsert.to_update_entity(record)
-                    batch.append(entity)
-                    batch_uids.append(str(entity["paper_uid"]))
-                    if len(batch) >= 500:
-                        upsert_current_batch()
-                upsert_current_batch()
-            finally:
-                client.flush(PAPER_NEW)
-        if not self.run_stage("Existing partial upsert", action):
-            raise AbortRun
-        self.changed_uids.update(upserted)
-        self.existing_upserted = len(upserted)
+        entities = list(self.iter_prod_entities(self.existing_update_dir, require_doi=True, require_abstract=True))
+        stats = self.upsert_prod_entities(entities, label="Existing paper_prod upsert")
+        self.existing_upserted = stats.upserted
+        print(f"Existing production upserted: {stats.upserted} | unchanged={stats.unchanged} | embedding failures={stats.embedding_failures}")
         self.report["existing backfill"] = "executed"
         self.report["existing upsert"] = "executed"
 
-    def refresh_stats(self) -> None:
-        self.stage(7, "paper_stats")
+    def write_fullpaper_candidates(self) -> Path:
+        output = self.update_dir / "fullpaper/fullpaper_candidates.json"
+        output.parent.mkdir(parents=True, exist_ok=True)
+        seen: set[str] = set()
+        records: list[dict[str, Any]] = []
+        for directory in (self.update_dir, self.existing_update_dir):
+            for _, record in read_records(directory, include_missing_doi=False):
+                entity = paper_upload.to_entity(record)
+                uid = str(entity.get("paper_uid") or "")
+                if not uid or uid in seen or not entity.get("doi"):
+                    continue
+                if self.changed_uids and uid not in self.changed_uids:
+                    continue
+                seen.add(uid)
+                records.append(
+                    {
+                        "paper_uid": uid,
+                        "doi": entity.get("doi"),
+                        "title": entity.get("title") or "",
+                    }
+                )
+        output.write_text(json.dumps(records, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        return output
+
+    def fetch_and_upload_fullpapers(self) -> None:
+        self.stage(7, "OpenAlex full-paper fetch")
         if not self.changed_uids:
-            print("No paper_new writes; skipping paper_stats.")
+            print("No paper_prod changes; skipping full-paper fetch.")
+            self.report["fullpaper"] = "skipped"
+            return
+        if not self.prompt_yes_skip("Fetch OpenAlex PDF full papers for changed papers?"):
+            self.report["fullpaper"] = "skipped"
+            return
+        candidates_path = self.write_fullpaper_candidates()
+        candidates = json.loads(candidates_path.read_text(encoding="utf-8"))
+        if not candidates:
+            print("No DOI candidates for OpenAlex PDF full-paper fetch.")
+            self.report["fullpaper"] = "skipped"
+            return
+        fullpaper_dir = self.update_dir / "fullpaper"
+        pdf_urls_path = fullpaper_dir / "openalex_pdf_urls.jsonl"
+        results_path = fullpaper_dir / "fullpaper_pdf_results.jsonl"
+
+        prefetch_args = fullpaper_prefetch.parse_args(
+            ["--input-file", str(candidates_path), "--output", str(pdf_urls_path)]
+        )
+        prefetch_args.use_env_api_key = True
+        prefetch_args.overwrite = False
+        if not self.run_stage("OpenAlex PDF URL prefetch", lambda: fullpaper_prefetch.run(prefetch_args), nonfatal=True):
+            self.report["fullpaper"] = "failed"
+            return
+
+        download_args = fullpaper_download.parse_args(
+            ["--input-file", str(pdf_urls_path), "--output-dir", str(fullpaper_dir), "--results", str(results_path)]
+        )
+        download_args.workers = self.args.fullpaper_workers
+        download_args.sleep = self.args.fullpaper_sleep
+        download_args.overwrite = False
+        if not self.run_stage("OpenAlex PDF download", lambda: fullpaper_download.run(download_args), nonfatal=True):
+            self.report["fullpaper"] = "failed"
+            return
+
+        if not self.prompt_yes_skip("Upload full-paper chunks and update paper_prod mappings?", write=True):
+            self.report["fullpaper"] = "downloaded"
+            return
+        upload_args = fullpaper_upload.parse_args(["--results", str(results_path)])
+        upload_args.paper_collection = PAPER_PROD
+        upload_args.full_collection = self.args.fullpaper_collection
+        upload_args.dry_run = False
+        summary: dict[str, Any] = {}
+        if not self.run_stage("Full-paper chunk upload", lambda: summary.update(fullpaper_upload.run(upload_args))):
+            raise AbortRun
+        self.fullpaper_updated = int(summary.get("updated_papers", 0) or 0)
+        self.report["fullpaper"] = "executed"
+
+    def refresh_stats(self) -> None:
+        self.stage(8, "paper_stats")
+        if not self.changed_uids:
+            print("No paper_prod writes; skipping paper_stats.")
             self.report["paper_stats"] = "skipped"
             return
-        print(f"paper_new changes: new={self.new_uploaded} existing_updates={self.existing_upserted}")
+        print(f"paper_prod changes: new={self.new_upserted} existing_updates={self.existing_upserted}")
         if not self.prompt_yes_skip("Refresh paper_stats?", write=True):
             self.report["paper_stats"] = "skipped"
             return
         import materialize_paper_stats
         stats_args = materialize_paper_stats.parse_args(
             [
-                "--source-collection", PAPER_NEW,
+                "--source-collection", PAPER_PROD,
                 "--stats-collection", "paper_stats",
                 "--read-batch-size", "5000",
                 "--write-batch-size", "500",
@@ -632,95 +756,8 @@ class UpdateCLI:
             raise AbortRun
         self.report["paper_stats"] = "executed"
 
-    def sync_changed_to_prod(self) -> None:
-        self.stage(8, "Production sync")
-        full_sync = False
-        if not self.changed_uids:
-            if not self.prompt_yes_skip(
-                "No paper_new writes. Scan all eligible paper_new records and sync paper_prod?",
-                write=True,
-            ):
-                self.report["paper_prod sync"] = "skipped"
-                return
-            full_sync = True
-        elif not self.prompt_yes_skip(f"Sync {len(self.changed_uids)} changed papers to paper_prod?", write=True):
-            self.report["paper_prod sync"] = "skipped"
-            return
-        stats = production_sync.RunStats()
-
-        def action() -> None:
-            client = production_sync.connect_zilliz()
-            prod_ready = False
-            try:
-                production_sync.ensure_prod_collection()
-                prod_ready = True
-                if full_sync:
-                    source_batches = production_sync.iter_eligible_batches(
-                        client,
-                        PAPER_NEW,
-                        timeout=production_sync.QUERY_TIMEOUT_SECONDS,
-                    )
-                else:
-                    uids = sorted(self.changed_uids)
-
-                    def changed_batches() -> Iterable[list[dict[str, Any]]]:
-                        found = 0
-                        for index, group in enumerate(chunked(uids, production_sync.BATCH_SIZE), start=1):
-                            rows = client.query(
-                                collection_name=PAPER_NEW,
-                                filter=production_sync.uid_in_expr(group),
-                                output_fields=production_sync.DEV_OUTPUT_FIELDS,
-                                limit=len(group) + 10,
-                                timeout=production_sync.QUERY_TIMEOUT_SECONDS,
-                            )
-                            found += len(rows)
-                            eligible = [row for row in rows if production_sync.is_eligible_row(row)]
-                            self.live_progress(
-                                "paper_new lookup",
-                                f"batch={index} requested={min(index * production_sync.BATCH_SIZE, len(uids))}/{len(uids)} "
-                                f"found={found} eligible={len(eligible)}",
-                            )
-                            if eligible:
-                                yield eligible
-
-                    source_batches = changed_batches()
-
-                embedder: production_sync.AzureEmbedder | None = None
-                eligible_total = 0
-                for index, group in enumerate(source_batches, start=1):
-                    eligible_total += len(group)
-                    if embedder is None:
-                        embedder = production_sync.AzureEmbedder()
-                    prod = production_sync.lookup_prod_rows(client, PAPER_PROD, [str(row["paper_uid"]) for row in group])
-                    classified = production_sync.classify_batch(group, prod, embedding_model=production_sync.EMBEDDING_MODEL)
-                    embed_rows = classified.new + classified.embed_input_change
-                    vectors, failures = production_sync.embed_rows(embedder, embed_rows)
-                    self.production_umap_uids.update(
-                        uid for uid, vector in vectors.items() if vector is not None
-                    )
-                    production_sync.upsert_entities(client, PAPER_PROD, production_sync.build_full_upsert_entities(embed_rows, embeddings_by_uid=vectors, embedding_model=production_sync.EMBEDDING_MODEL))
-                    production_sync.upsert_entities(client, PAPER_PROD, production_sync.build_metadata_partial_entities(classified.metadata_only_change), partial_update=True)
-                    stats.new += len(classified.new); stats.embed_input_change += len(classified.embed_input_change); stats.metadata_only_change += len(classified.metadata_only_change); stats.unchanged += len(classified.unchanged); stats.embedding_failures += failures; stats.upserted += len(embed_rows) + len(classified.metadata_only_change)
-                    self.live_progress(
-                        "production sync",
-                        f"batch={index} eligible={eligible_total} new={stats.new} reembed={stats.embed_input_change} "
-                        f"metadata={stats.metadata_only_change} unchanged={stats.unchanged} failures={stats.embedding_failures}",
-                    )
-            finally:
-                if prod_ready:
-                    client.flush(PAPER_PROD)
-        label = "Full paper_prod sync" if full_sync else "Incremental paper_prod sync"
-        if not self.run_stage(label, action):
-            raise AbortRun
-        print(f"Production synced: new={stats.new} reembed={stats.embed_input_change} metadata={stats.metadata_only_change} unchanged={stats.unchanged} failures={stats.embedding_failures}")
-        self.report["paper_prod sync"] = "executed"
-
     def update_production_umap(self) -> None:
         self.stage(9, "Production UMAP")
-        if self.report.get("paper_prod sync") != "executed":
-            print("Production sync was not executed; skipping UMAP.")
-            self.report["paper_prod umap"] = "skipped"
-            return
         if not self.production_umap_uids:
             print("No successful embedding changes; skipping UMAP.")
             self.report["paper_prod umap"] = "skipped"
@@ -755,10 +792,10 @@ class UpdateCLI:
 
     def print_report(self) -> None:
         manifest = self.update_dir / "update_cli_manifest.json"
-        write_json(manifest, {"date": self.update_date, "new_uploaded": self.new_uploaded, "existing_upserted": self.existing_upserted, "production_umap_updated": self.production_umap_updated, "changed_uids": sorted(self.changed_uids), "stages": self.report})
+        write_json(manifest, {"date": self.update_date, "new_upserted": self.new_upserted, "existing_upserted": self.existing_upserted, "fullpaper_updated": self.fullpaper_updated, "production_umap_updated": self.production_umap_updated, "changed_uids": sorted(self.changed_uids), "stages": self.report})
         print("\n=== Update report ===")
         print(f"Run manifest: {manifest.relative_to(PROJECT_ROOT)}")
-        for name in ("new enrichment", "new upload", "existing backfill", "existing upsert", "paper_stats", "paper_prod sync", "paper_prod umap"):
+        for name in ("new enrichment", "new prod upsert", "existing backfill", "existing upsert", "fullpaper", "paper_stats", "paper_prod umap"):
             print(f"{name}: {self.report.get(name, 'skipped')}")
 
     def run_all(self) -> None:
@@ -767,8 +804,8 @@ class UpdateCLI:
         candidates = self.filter_new(keys, dois, excluded)
         self.upload_new(self.enrich_new(candidates, dois))
         self.backfill_existing()
+        self.fetch_and_upload_fullpapers()
         self.refresh_stats()
-        self.sync_changed_to_prod()
         self.update_production_umap()
         self.print_report()
 
@@ -778,9 +815,25 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--date", default=time.strftime("%Y%m%d"), help="Update date in YYYYMMDD format.")
     parser.add_argument("--yes", action="store_true", help="Answer yes to update CLI confirmations.")
     parser.add_argument("--no-write", action="store_true", help="Skip all Zilliz writes, stats, and production sync.")
+    parser.add_argument("--fullpaper-workers", type=int, default=1, help="Workers for OpenAlex PDF download/Markdown conversion.")
+    parser.add_argument("--fullpaper-sleep", type=float, default=1.0, help="Delay between OpenAlex PDF download submissions.")
+    parser.add_argument("--fullpaper-collection", default="paper_full", help="Zilliz collection for full-paper chunks.")
+    parser.add_argument("--openalex-workers", type=int, default=4, help="Workers for OpenAlex DOI enrichment.")
+    parser.add_argument("--openalex-max-pending", type=int, default=16, help="Max pending OpenAlex DOI enrichment requests.")
+    parser.add_argument("--openalex-sleep", type=float, default=0.1, help="Delay after each uncached OpenAlex DOI lookup.")
     args = parser.parse_args()
     if len(args.date) != 8 or not args.date.isdigit():
         parser.error("--date must use YYYYMMDD")
+    if args.fullpaper_workers < 1:
+        parser.error("--fullpaper-workers must be >= 1")
+    if args.fullpaper_sleep < 0:
+        parser.error("--fullpaper-sleep must be >= 0")
+    if args.openalex_workers < 1:
+        parser.error("--openalex-workers must be >= 1")
+    if args.openalex_max_pending < args.openalex_workers:
+        parser.error("--openalex-max-pending must be >= --openalex-workers")
+    if args.openalex_sleep < 0:
+        parser.error("--openalex-sleep must be >= 0")
     return args
 
 
